@@ -2193,6 +2193,7 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         await enqueue_video_download(
                             context.application,
                             VideoDownloadJob(
+                                user_id=user.id,
                                 chat_id=query.message.chat_id,
                                 anime_id=anime_id,
                                 episode=str(episode),
