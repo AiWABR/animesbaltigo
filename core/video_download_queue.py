@@ -10,15 +10,18 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import httpx
-from telegram.error import TimedOut
+from telegram.error import TelegramError, TimedOut
 
 from config import (
+    TELETHON_UPLOAD_MAX_MB,
     VIDEO_DOWNLOAD_CACHE_DIR,
     VIDEO_DOWNLOAD_MAX_MB,
     VIDEO_DOWNLOAD_PROTECT_CONTENT,
     VIDEO_DOWNLOAD_QUEUE_LIMIT,
     VIDEO_DOWNLOAD_WORKERS,
+    VIDEO_UPLOAD_MAX_MB,
 )
+from core.telethon_uploader import send_file_with_telethon, telethon_configured
 
 HEADERS = {
     "User-Agent": (
@@ -34,6 +37,8 @@ HEADERS = {
 CHUNK_SIZE = 1024 * 1024
 PROGRESS_INTERVAL = 3.0
 MAX_BYTES = max(1, VIDEO_DOWNLOAD_MAX_MB) * 1024 * 1024
+UPLOAD_MAX_BYTES = max(1, VIDEO_UPLOAD_MAX_MB) * 1024 * 1024
+TELETHON_MAX_BYTES = max(1, TELETHON_UPLOAD_MAX_MB) * 1024 * 1024
 
 
 @dataclass
@@ -91,6 +96,19 @@ def _human_size(value: int | None) -> str:
     return f"{mb / 1024:.2f} GB"
 
 
+def _raise_if_too_large_for_upload(size: int) -> None:
+    if size <= UPLOAD_MAX_BYTES:
+        return
+    if telethon_configured() and size <= TELETHON_MAX_BYTES:
+        return
+    raise RuntimeError(
+        "O episodio foi encontrado, mas ficou grande demais para enviar pelo Bot API oficial.\n"
+        f"Tamanho: {_human_size(size)}\n"
+        f"Limite configurado: {_human_size(UPLOAD_MAX_BYTES)}\n\n"
+        "Configure API_ID e API_HASH para ativar o uploader Telethon igual o Baixa Aqui."
+    )
+
+
 async def _safe_edit(message, text: str) -> None:
     try:
         await message.edit_text(text, parse_mode="HTML")
@@ -136,6 +154,8 @@ async def _download_file(job: VideoDownloadJob, entry: dict) -> Path:
             total = int(response.headers.get("content-length") or 0) or None
             if total and total > MAX_BYTES:
                 raise RuntimeError(f"Arquivo muito grande para enviar: {_human_size(total)}.")
+            if total:
+                _raise_if_too_large_for_upload(total)
 
             downloaded = 0
             last_progress = 0.0
@@ -206,10 +226,28 @@ async def _download_hls(job: VideoDownloadJob, entry: dict, target: Path, temp: 
         raise RuntimeError(f"Arquivo passou do limite de {_human_size(MAX_BYTES)}.")
 
     temp.replace(target)
+    _raise_if_too_large_for_upload(target.stat().st_size)
     return target
 
 
 async def _send_video_safe(bot, chat_id: int, path: Path, caption: str) -> bool:
+    size = path.stat().st_size
+
+    if size > UPLOAD_MAX_BYTES:
+        if size > TELETHON_MAX_BYTES:
+            raise RuntimeError(
+                f"Arquivo maior que o limite Telethon configurado: {_human_size(size)} > {_human_size(TELETHON_MAX_BYTES)}."
+            )
+        sent = await send_file_with_telethon(chat_id, path, caption, as_video=True)
+        if sent:
+            return True
+        raise RuntimeError(
+            "Arquivo grande demais para Bot API e o uploader Telethon nao esta configurado.\n"
+            "Preencha API_ID e API_HASH no .env."
+        )
+
+    _raise_if_too_large_for_upload(size)
+
     try:
         with open(path, "rb") as file:
             await bot.send_video(
@@ -232,7 +270,13 @@ async def _send_video_safe(bot, chat_id: int, path: Path, caption: str) -> bool:
         except Exception:
             pass
         return True
-    except Exception:
+    except TelegramError as error:
+        if "request entity too large" in str(error).lower():
+            raise RuntimeError(
+                "O Telegram recusou o upload porque o arquivo e grande demais para o Bot API oficial.\n"
+                f"Tamanho: {_human_size(path.stat().st_size)}\n"
+                "Use Telegram Bot API local ou Telethon para episodios grandes."
+            ) from error
         with open(path, "rb") as file:
             await bot.send_document(
                 chat_id=chat_id,
