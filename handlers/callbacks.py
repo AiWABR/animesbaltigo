@@ -9,6 +9,7 @@ from urllib.parse import quote_plus
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update, WebAppInfo
 from telegram.ext import ContextTypes
 
+from config import ADMIN_IDS
 from core.video_download_queue import VideoDownloadJob, enqueue_video_download
 from services.animefire_client import (
     get_anime_details,
@@ -1998,6 +1999,14 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data or ""
     print("CALLBACK DATA:", data)
 
+    if data.startswith(("off|", "offeps|", "dl|")) and user.id not in ADMIN_IDS:
+        await _safe_answer_query(
+            query,
+            "\U0001f512 Recurso restrito.\n\nApenas pessoas autorizadas podem baixar epis\u00f3dios offline por enquanto.",
+            show_alert=True,
+        )
+        return
+
     if data == "noop_loading":
         await _safe_answer_query(query, "⏳ Aguarde...", show_alert=False)
         return
@@ -2171,12 +2180,12 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
 
                     if not video_url:
-                        await _safe_answer_query(query, "Nao encontrei o video desse episodio.", show_alert=True)
+                        await _safe_answer_query(query, "N\u00e3o encontrei o v\u00eddeo desse epis\u00f3dio.", show_alert=True)
                         return
 
                     caption = (
                         f"<b>{html.escape(title)}</b>\n"
-                        f"<b>Episodio:</b> {html.escape(str(episode))}\n"
+                        f"<b>Epis\u00f3dio:</b> {html.escape(str(episode))}\n"
                         f"<b>Qualidade:</b> {html.escape(resolved_quality)}"
                     )
 
