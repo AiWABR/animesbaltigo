@@ -37,6 +37,7 @@ from handlers.broadcast import (
 from handlers.referral import indicacoes, referral_button
 from handlers.referral_admin import refstats, auto_referral_check_job
 from services.referral_db import init_referral_db
+from services.subscriptions import init_subscriptions_db
 from handlers.bingo import bingo
 from handlers.bingo_admin import startbingo, sortear, startbingo_auto, resetbingo
 from services.metrics import init_metrics_db
@@ -50,6 +51,7 @@ from handlers.group_ai import group_ai_handler, esquecer_handler
 
 
 init_metrics_db()
+init_subscriptions_db()
 
 async def post_init(app: Application):
     await start_telethon_uploader()
