@@ -483,7 +483,7 @@ def _player_keyboard(
                 web_app=WebAppInfo(url=miniapp_episode_url),
             )
         ],
-        [InlineKeyboardButton("Baixar offline", callback_data=f"dl|{anime_id}|{episode}")],
+        [InlineKeyboardButton("\U0001f4e5 Baixar offline", callback_data=f"dl|{anime_id}|{episode}")],
         [watch_toggle_button],
         [
             InlineKeyboardButton(hd_label, callback_data=f"ql|{anime_id}|{episode}|HD"),
@@ -567,7 +567,7 @@ def _single_anime_keyboard(
     ]
 
     rows.append([
-        InlineKeyboardButton("Baixar offline", callback_data=f"off|{anime_id}")
+        InlineKeyboardButton("\U0001f4e5 Baixar offline", callback_data=f"off|{anime_id}")
     ])
 
     second_row = []
@@ -616,7 +616,7 @@ def _variant_keyboard(
     default_id = group_item.get("default_anime_id") or group_item.get("id")
     if default_id:
         rows.append([
-            InlineKeyboardButton("Baixar offline", callback_data=f"off|{default_id}")
+            InlineKeyboardButton("\U0001f4e5 Baixar offline", callback_data=f"off|{default_id}")
         ])
 
     second_row = []
