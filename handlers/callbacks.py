@@ -1866,7 +1866,7 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                     _set_inflight_action(message.chat.id, message.message_id, current_action)
 
-                if data.startswith(("ep|", "eps|", "anime|", "sp|", "sa|", "ql|", "rec|", "var|", "vw|", "unvw|")):
+                if data.startswith(("ep|", "eps|", "anime|", "sp|", "sa|", "ql|", "rec|", "var|", "vw|", "unvw|", "dl|")):
                     await _set_loading_state(query)
 
                 if data.startswith("ql|"):
