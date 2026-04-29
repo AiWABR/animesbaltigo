@@ -53,7 +53,7 @@ TELETHON_SESSION_NAME = os.getenv(
     "TELETHON_SESSION_NAME",
     str(DATA_DIR / "anime_uploader_bot"),
 ).strip()
-VIDEO_DOWNLOAD_PROTECT_CONTENT = os.getenv("VIDEO_DOWNLOAD_PROTECT_CONTENT", "0").strip() == "1"
+VIDEO_DOWNLOAD_PROTECT_CONTENT = os.getenv("VIDEO_DOWNLOAD_PROTECT_CONTENT", "1").strip() == "1"
 
 BOT_BRAND = os.getenv("BOT_BRAND", "Anime Brasil").strip()
 WEBAPP_BASE_URL = os.getenv("WEBAPP_BASE_URL", "").strip().rstrip("/")
