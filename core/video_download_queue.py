@@ -47,6 +47,7 @@ CACHE_CLEANUP_INTERVAL = max(60, VIDEO_CACHE_CLEANUP_INTERVAL_SECONDS)
 
 @dataclass
 class VideoDownloadJob:
+    user_id: int
     chat_id: int
     anime_id: str
     episode: str
@@ -59,6 +60,8 @@ class VideoDownloadJob:
 _workers: list[asyncio.Task] = []
 _cleanup_task: asyncio.Task | None = None
 _active_jobs: dict[str, dict] = {}
+_active_user_jobs: dict[int, str] = {}
+_enqueue_lock = asyncio.Lock()
 
 
 def _job_key(anime_id: str, episode: str, quality: str) -> str:
@@ -429,7 +432,11 @@ async def _process_job(app, job: VideoDownloadJob) -> None:
             await cleanup_video_cache()
         except Exception:
             pass
-        _active_jobs.pop(key, None)
+        async with _enqueue_lock:
+            _active_jobs.pop(key, None)
+            for user_id, active_key in list(_active_user_jobs.items()):
+                if active_key == key:
+                    _active_user_jobs.pop(user_id, None)
 
 
 async def _worker(app, queue: asyncio.Queue) -> None:
@@ -447,44 +454,71 @@ async def enqueue_video_download(app, job: VideoDownloadJob) -> int:
     queue = app.bot_data["video_download_queue"]
     key = _job_key(job.anime_id, job.episode, job.quality)
 
-    if key in _active_jobs:
-        entry = _active_jobs[key]
-        entry["waiters"].append({"chat_id": job.chat_id, "caption": job.caption})
-        status = await app.bot.send_message(
-            job.chat_id,
-            (
-                "<b>Pedido recebido</b>\n\n"
-                f"<b>Anime:</b> {html.escape(job.title)}\n"
-                f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}\n"
-                "Status: <b>j\u00e1 est\u00e1 sendo preparado</b>"
-            ),
-            parse_mode="HTML",
-        )
-        entry["status_messages"].append(status)
+    async with _enqueue_lock:
+        if job.user_id in _active_user_jobs:
+            raise RuntimeError(
+                "Voce ja tem um episodio em download ou upload. Aguarde terminar para pedir outro."
+            )
+
+        if key in _active_jobs:
+            entry = _active_jobs[key]
+            _active_user_jobs[job.user_id] = key
+            try:
+                status = await app.bot.send_message(
+                    job.chat_id,
+                    (
+                        "<b>Pedido recebido</b>\n\n"
+                        f"<b>Anime:</b> {html.escape(job.title)}\n"
+                        f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}\n"
+                        "Status: <b>j\u00e1 est\u00e1 sendo preparado</b>"
+                    ),
+                    parse_mode="HTML",
+                )
+            except Exception:
+                _active_user_jobs.pop(job.user_id, None)
+                raise
+
+            entry["waiters"].append({
+                "user_id": job.user_id,
+                "chat_id": job.chat_id,
+                "caption": job.caption,
+            })
+            entry["status_messages"].append(status)
+            return queue.qsize()
+
+        if queue.full():
+            raise RuntimeError(
+                "A fila de downloads esta cheia agora. Tente de novo em alguns minutos."
+            )
+
+        _active_user_jobs[job.user_id] = key
+        try:
+            status = await app.bot.send_message(
+                job.chat_id,
+                (
+                    "<b>Pedido recebido</b>\n\n"
+                    f"<b>Anime:</b> {html.escape(job.title)}\n"
+                    f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}\n"
+                    "Status: <b>na fila</b>"
+                ),
+                parse_mode="HTML",
+            )
+
+            _active_jobs[key] = {
+                "waiters": [{
+                    "user_id": job.user_id,
+                    "chat_id": job.chat_id,
+                    "caption": job.caption,
+                }],
+                "status_messages": [status],
+            }
+            queue.put_nowait(job)
+        except Exception:
+            _active_user_jobs.pop(job.user_id, None)
+            _active_jobs.pop(key, None)
+            raise
+
         return queue.qsize()
-
-    if queue.full():
-        raise RuntimeError(
-            "A fila de downloads esta cheia agora. Tente de novo em alguns minutos."
-        )
-
-    status = await app.bot.send_message(
-        job.chat_id,
-        (
-            "<b>Pedido recebido</b>\n\n"
-            f"<b>Anime:</b> {html.escape(job.title)}\n"
-            f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}\n"
-            "Status: <b>na fila</b>"
-        ),
-        parse_mode="HTML",
-    )
-
-    _active_jobs[key] = {
-        "waiters": [{"chat_id": job.chat_id, "caption": job.caption}],
-        "status_messages": [status],
-    }
-    await queue.put(job)
-    return queue.qsize()
 
 
 async def start_video_download_workers(app) -> None:
