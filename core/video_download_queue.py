@@ -96,13 +96,21 @@ def _human_size(value: int | None) -> str:
     return f"{mb / 1024:.2f} GB"
 
 
+def _progress_bar(done: int, total: int | None, width: int = 10) -> str:
+    if not total:
+        return "\u25aa\ufe0f" * width
+    ratio = max(0.0, min(1.0, done / max(total, 1)))
+    filled = int(ratio * width)
+    return ("\u25aa\ufe0f" * filled) + ("\u25ab\ufe0f" * (width - filled))
+
+
 def _raise_if_too_large_for_upload(size: int) -> None:
     if size <= UPLOAD_MAX_BYTES:
         return
     if telethon_configured() and size <= TELETHON_MAX_BYTES:
         return
     raise RuntimeError(
-        "O episodio foi encontrado, mas ficou grande demais para enviar pelo Bot API oficial.\n"
+        "O epis\u00f3dio foi encontrado, mas ficou grande demais para enviar pelo Bot API oficial.\n"
         f"Tamanho: {_human_size(size)}\n"
         f"Limite configurado: {_human_size(UPLOAD_MAX_BYTES)}\n\n"
         "Configure API_ID e API_HASH para ativar o uploader Telethon igual o Baixa Aqui."
@@ -120,11 +128,27 @@ async def _progress(entry: dict, job: VideoDownloadJob, downloaded: int, total: 
     total_text = _human_size(total) if total else "calculando"
     pct = int((downloaded / total) * 100) if total else 0
     text = (
-        "<b>Baixando episodio</b>\n\n"
+        "<b>Baixando epis\u00f3dio</b>\n\n"
         f"<b>Anime:</b> {html.escape(job.title)}\n"
-        f"<b>Episodio:</b> {html.escape(str(job.episode))}\n"
+        f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}\n"
         f"<b>Qualidade:</b> {html.escape(job.quality)}\n"
-        f"<b>Progresso:</b> {pct}% ({_human_size(downloaded)} / {total_text})"
+        f"<b>Progresso:</b> {pct}%\n"
+        f"{_progress_bar(downloaded, total)}\n"
+        f"<code>{_human_size(downloaded)} / {total_text}</code>"
+    )
+    for message in list(entry["status_messages"]):
+        await _safe_edit(message, text)
+
+
+async def _upload_progress(entry: dict, job: VideoDownloadJob, current: int, total: int) -> None:
+    pct = int((current / max(total, 1)) * 100)
+    text = (
+        "<b>Enviando epis\u00f3dio</b>\n\n"
+        f"<b>Anime:</b> {html.escape(job.title)}\n"
+        f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}\n"
+        f"<b>Progresso:</b> {pct}%\n"
+        f"{_progress_bar(current, total)}\n"
+        f"<code>{_human_size(current)} / {_human_size(total)}</code>"
     )
     for message in list(entry["status_messages"]):
         await _safe_edit(message, text)
@@ -181,7 +205,7 @@ async def _download_file(job: VideoDownloadJob, entry: dict) -> Path:
 async def _download_hls(job: VideoDownloadJob, entry: dict, target: Path, temp: Path) -> Path:
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
-        raise RuntimeError("Esse episodio veio em stream HLS. Instale ffmpeg no servidor para baixar offline.")
+        raise RuntimeError("Esse epis\u00f3dio veio em stream HLS. Instale ffmpeg no servidor para baixar offline.")
 
     await _progress(entry, job, 0, None)
 
@@ -231,7 +255,7 @@ async def _download_hls(job: VideoDownloadJob, entry: dict, target: Path, temp: 
     return target
 
 
-async def _send_video_safe(bot, chat_id: int, path: Path, caption: str) -> bool:
+async def _send_video_safe(bot, chat_id: int, path: Path, caption: str, progress_cb=None) -> bool:
     size = path.stat().st_size
 
     if telethon_configured():
@@ -239,7 +263,14 @@ async def _send_video_safe(bot, chat_id: int, path: Path, caption: str) -> bool:
             raise RuntimeError(
                 f"Arquivo maior que o limite Telethon configurado: {_human_size(size)} > {_human_size(TELETHON_MAX_BYTES)}."
             )
-        sent = await send_file_with_telethon(chat_id, path, caption, as_video=True)
+        sent = await send_file_with_telethon(
+            chat_id,
+            path,
+            caption,
+            as_video=True,
+            progress_callback=progress_cb,
+            protect_content=True,
+        )
         if sent:
             return True
         if size > UPLOAD_MAX_BYTES:
@@ -265,7 +296,7 @@ async def _send_video_safe(bot, chat_id: int, path: Path, caption: str) -> bool:
                 caption=caption,
                 parse_mode="HTML",
                 supports_streaming=True,
-                protect_content=VIDEO_DOWNLOAD_PROTECT_CONTENT,
+                protect_content=True,
                 read_timeout=120,
                 write_timeout=120,
                 connect_timeout=30,
@@ -283,7 +314,7 @@ async def _send_video_safe(bot, chat_id: int, path: Path, caption: str) -> bool:
             raise RuntimeError(
                 "O Telegram recusou o upload porque o arquivo e grande demais para o Bot API oficial.\n"
                 f"Tamanho: {_human_size(path.stat().st_size)}\n"
-                "Use Telegram Bot API local ou Telethon para episodios grandes."
+                "Use Telegram Bot API local ou Telethon para epis\u00f3dios grandes."
             ) from error
         with open(path, "rb") as file:
             await bot.send_document(
@@ -292,7 +323,7 @@ async def _send_video_safe(bot, chat_id: int, path: Path, caption: str) -> bool:
                 filename=path.name,
                 caption=caption,
                 parse_mode="HTML",
-                protect_content=VIDEO_DOWNLOAD_PROTECT_CONTENT,
+                protect_content=True,
                 read_timeout=120,
                 write_timeout=120,
                 connect_timeout=30,
@@ -315,28 +346,38 @@ async def _process_job(app, job: VideoDownloadJob) -> None:
             await _safe_edit(
                 message,
                 (
-                    "<b>Enviando episodio</b>\n\n"
+                    "<b>Enviando epis\u00f3dio</b>\n\n"
                     f"<b>Anime:</b> {html.escape(job.title)}\n"
-                    f"<b>Episodio:</b> {html.escape(str(job.episode))}\n"
+                    f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}\n"
                     f"<b>Tamanho:</b> {_human_size(path.stat().st_size)}"
                 ),
             )
 
         for waiter in entry["waiters"]:
-            await _send_video_safe(app.bot, waiter["chat_id"], path, waiter["caption"])
+            last_upload_update = 0.0
+
+            async def progress_cb(current: int, total: int):
+                nonlocal last_upload_update
+                now = time.monotonic()
+                if current < total and now - last_upload_update < PROGRESS_INTERVAL:
+                    return
+                last_upload_update = now
+                await _upload_progress(entry, job, current, total)
+
+            await _send_video_safe(app.bot, waiter["chat_id"], path, waiter["caption"], progress_cb=progress_cb)
 
         for message in list(entry["status_messages"]):
             await _safe_edit(
                 message,
                 (
-                    "<b>Episodio enviado</b>\n\n"
+                    "<b>Epis\u00f3dio enviado</b>\n\n"
                     f"<b>Anime:</b> {html.escape(job.title)}\n"
-                    f"<b>Episodio:</b> {html.escape(str(job.episode))}"
+                    f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}"
                 ),
             )
     except Exception as error:
         for message in list(entry["status_messages"]):
-            await _safe_edit(message, f"<b>Falha ao baixar episodio:</b>\n<code>{html.escape(str(error))}</code>")
+            await _safe_edit(message, f"<b>Falha ao baixar epis\u00f3dio:</b>\n<code>{html.escape(str(error))}</code>")
     finally:
         _active_jobs.pop(key, None)
 
@@ -364,8 +405,8 @@ async def enqueue_video_download(app, job: VideoDownloadJob) -> int:
             (
                 "<b>Pedido recebido</b>\n\n"
                 f"<b>Anime:</b> {html.escape(job.title)}\n"
-                f"<b>Episodio:</b> {html.escape(str(job.episode))}\n"
-                "Status: <b>ja esta sendo preparado</b>"
+                f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}\n"
+                "Status: <b>j\u00e1 est\u00e1 sendo preparado</b>"
             ),
             parse_mode="HTML",
         )
@@ -377,7 +418,7 @@ async def enqueue_video_download(app, job: VideoDownloadJob) -> int:
         (
             "<b>Pedido recebido</b>\n\n"
             f"<b>Anime:</b> {html.escape(job.title)}\n"
-            f"<b>Episodio:</b> {html.escape(str(job.episode))}\n"
+            f"<b>Epis\u00f3dio:</b> {html.escape(str(job.episode))}\n"
             "Status: <b>na fila</b>"
         ),
         parse_mode="HTML",
