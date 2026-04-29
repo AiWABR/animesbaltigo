@@ -14,6 +14,7 @@ from telegram.ext import (
 
 from config import BOT_TOKEN
 from core.http_client import close_http_client
+from core.telethon_uploader import start_telethon_uploader, stop_telethon_uploader
 from core.video_download_queue import start_video_download_workers, stop_video_download_workers
 from handlers.start import start
 from handlers.search import buscar
@@ -51,12 +52,14 @@ from handlers.group_ai import group_ai_handler, esquecer_handler
 init_metrics_db()
 
 async def post_init(app: Application):
+    await start_telethon_uploader()
     await start_video_download_workers(app)
     asyncio.create_task(preload_popular_cache())
 
 
 async def post_shutdown(app: Application):
     await stop_video_download_workers(app)
+    await stop_telethon_uploader()
     await close_http_client()
 
 
