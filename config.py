@@ -57,3 +57,8 @@ TELETHON_PARALLEL_UPLOAD_WORKERS = int(os.getenv("TELETHON_PARALLEL_UPLOAD_WORKE
 TELETHON_SESSION_NAME = os.getenv(
     "TELETHON_SESSION_NAME",
     str(DATA_DIR / "anime_uploader_bot"),
+).strip()
+TELETHON_SESSION_NAME = os.getenv("TELETHON_SESSION_NAME", str(DATA_DIR / "anime_uploader_bot")).strip()
+VIDEO_DOWNLOAD_PROTECT_CONTENT = os.getenv("VIDEO_DOWNLOAD_PROTECT_CONTENT", "1").strip() == "1"
+
+BOT_BRAND = os.getenv("BOT_BRAND", "Anime Brasil").strip()
