@@ -19,15 +19,16 @@ from services.subscriptions import (
     normalize_plan,
     plan_label,
 )
+from services.affiliate_db import cancel_commissions_for_sale, create_commissions_for_sale, plan_price_cents
 
 APPROVED_STATUSES = {"approved", "aprovado", "paid", "pago", "completed", "complete", "active", "ativo"}
 REVOKED_STATUSES = {"refunded", "reembolsado", "chargeback", "canceled", "cancelled", "cancelado", "refused", "recusado"}
 
 PLAN_CHECKOUTS = (
-    ("mensal", "Mensal - R$ 19,90", CAKTO_MENSAL_CHECKOUT_URL),
-    ("trimestral", "Trimestral - R$ 39,90", CAKTO_TRIMESTRAL_CHECKOUT_URL),
-    ("semestral", "Semestral - R$ 59,90", CAKTO_SEMESTRAL_CHECKOUT_URL),
-    ("anual", "Anual - R$ 129,90", CAKTO_ANUAL_CHECKOUT_URL),
+    ("mensal", "🔥 Mensal - R$ 19,90", CAKTO_MENSAL_CHECKOUT_URL),
+    ("trimestral", "⚡ Trimestral - R$ 39,90", CAKTO_TRIMESTRAL_CHECKOUT_URL),
+    ("semestral", "💎 Semestral - R$ 59,90", CAKTO_SEMESTRAL_CHECKOUT_URL),
+    ("anual", "🏆 Anual - R$ 129,90", CAKTO_ANUAL_CHECKOUT_URL),
 )
 
 _TRACKING_RE = re.compile(
@@ -207,7 +208,8 @@ def process_cakto_webhook(payload: dict[str, Any]) -> dict[str, Any]:
         if not user_id:
             return {**base, "action": "ignored", "reason": "missing_telegram_id"}
         sub = deactivate_from_cakto({**payload, "event_id": event_id, "tg_id": user_id, "plan": plan})
-        return {**base, "action": "revoked", "subscription": sub}
+        canceled_commissions = cancel_commissions_for_sale(buyer_user_id=user_id)
+        return {**base, "action": "revoked", "subscription": sub, "canceled_commissions": canceled_commissions}
 
     if status in APPROVED_STATUSES:
         if not user_id:
@@ -215,6 +217,14 @@ def process_cakto_webhook(payload: dict[str, Any]) -> dict[str, Any]:
         if not plan:
             return {**base, "action": "ignored", "reason": "missing_plan"}
         sub = activate_from_cakto({**payload, "event_id": event_id, "tg_id": user_id, "plan": plan})
-        return {**base, "action": "granted", "subscription": sub}
+        commissions = []
+        if not sub.get("duplicate_event"):
+            commissions = create_commissions_for_sale(
+                user_id,
+                plan,
+                event_id=event_id,
+                sale_amount_cents=plan_price_cents(plan),
+            )
+        return {**base, "action": "granted", "subscription": sub, "commissions": commissions}
 
     return {**base, "action": "ignored", "reason": "event_not_handled"}
