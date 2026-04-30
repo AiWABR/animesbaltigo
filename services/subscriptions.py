@@ -13,26 +13,40 @@ from config import DATA_DIR
 DB_PATH = DATA_DIR / "offline_subscriptions.sqlite3"
 
 APPROVED_EVENTS = {
-    "purchase_approved",
-    "compra_aprovada",
+    "approved",
+    "approve",
     "payment_approved",
-    "order_paid",
+    "payment_paid",
     "paid",
+    "order_approved",
+    "order_paid",
+    "purchase_approved",
+    "purchase_paid",
+    "sale_approved",
+    "sale_paid",
+    "compra_aprovada",
     "subscription_approved",
+    "subscription_paid",
     "subscription_renewed",
 }
 
 CANCEL_EVENTS = {
-    "purchase_refused",
-    "compra_recusada",
-    "payment_refused",
-    "subscription_canceled",
-    "subscription_cancelled",
+    "refused",
+    "rejected",
     "canceled",
     "cancelled",
-    "refunded",
     "refund",
+    "refunded",
     "chargeback",
+    "payment_refused",
+    "payment_rejected",
+    "order_canceled",
+    "order_cancelled",
+    "purchase_refused",
+    "purchase_rejected",
+    "compra_recusada",
+    "subscription_canceled",
+    "subscription_cancelled",
 }
 
 PLAN_DAYS = {
@@ -160,6 +174,12 @@ def _text(value: Any) -> str:
     return str(value or "").strip()
 
 
+def _normalize_code(value: Any) -> str:
+    text = _text(value).lower()
+    text = re.sub(r"[^a-z0-9]+", "_", text)
+    return text.strip("_")
+
+
 def _walk_values(payload: Any):
     if isinstance(payload, dict):
         for key, value in payload.items():
@@ -171,12 +191,38 @@ def _walk_values(payload: Any):
 
 
 def extract_event_type(payload: dict) -> str:
-    return _text(
-        payload.get("event")
-        or payload.get("type")
-        or payload.get("event_type")
-        or payload.get("event_name")
-    ).lower()
+    for key, value in _walk_values(payload):
+        if key.lower() in {"event", "type", "event_type", "event_name", "webhook_event"}:
+            event_type = _normalize_code(value)
+            if event_type:
+                return event_type
+    return ""
+
+
+def is_approved_payload(payload: dict) -> bool:
+    event_type = extract_event_type(payload)
+    if event_type in APPROVED_EVENTS:
+        return True
+    for key, value in _walk_values(payload):
+        key_l = key.lower()
+        if key_l in {"status", "payment_status", "order_status", "purchase_status", "sale_status"}:
+            status = _normalize_code(value)
+            if status in {"approved", "approve", "paid", "completed", "active", "confirmed"}:
+                return True
+    return False
+
+
+def is_cancel_payload(payload: dict) -> bool:
+    event_type = extract_event_type(payload)
+    if event_type in CANCEL_EVENTS:
+        return True
+    for key, value in _walk_values(payload):
+        key_l = key.lower()
+        if key_l in {"status", "payment_status", "order_status", "purchase_status", "sale_status"}:
+            status = _normalize_code(value)
+            if status in {"refused", "rejected", "canceled", "cancelled", "refunded", "chargeback"}:
+                return True
+    return False
 
 
 def extract_token(payload: dict) -> str:
