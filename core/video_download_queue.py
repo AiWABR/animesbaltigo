@@ -13,6 +13,7 @@ import httpx
 from telegram.error import TelegramError, TimedOut
 
 from config import (
+    ADMIN_IDS,
     TELETHON_UPLOAD_MAX_MB,
     VIDEO_CACHE_CLEANUP_INTERVAL_SECONDS,
     VIDEO_CACHE_TTL_HOURS,
@@ -24,6 +25,7 @@ from config import (
     VIDEO_UPLOAD_MAX_MB,
 )
 from core.telethon_uploader import send_file_with_telethon, telethon_configured
+from services.subscriptions import is_active_subscriber
 
 HEADERS = {
     "User-Agent": (
@@ -473,6 +475,11 @@ async def enqueue_video_download(app, job: VideoDownloadJob) -> int:
     key = _job_key(job.anime_id, job.episode, job.quality)
 
     async with _enqueue_lock:
+        if job.user_id not in ADMIN_IDS and not is_active_subscriber(job.user_id):
+            raise RuntimeError(
+                "Offline exclusivo para assinantes BaltigoFlix. Assine para liberar downloads."
+            )
+
         if job.user_id in _active_user_jobs:
             raise RuntimeError(
                 "Voce ja tem um episodio em download ou upload. Aguarde terminar para pedir outro."
