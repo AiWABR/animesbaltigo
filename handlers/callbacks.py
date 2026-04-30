@@ -11,6 +11,7 @@ from telegram.ext import ContextTypes
 
 from config import ADMIN_IDS
 from core.video_download_queue import VideoDownloadJob, enqueue_video_download
+from handlers.offline_paywall import answer_subscription_check, send_offline_paywall
 from services.animefire_client import (
     get_anime_details,
     get_episodes,
@@ -24,6 +25,7 @@ from services.metrics import (
     mark_episode_watched,
     unmark_episode_watched,
 )
+from services.subscriptions import is_active_subscriber
 
 EPISODES_PER_PAGE = 15
 SEARCH_RESULTS_PER_PAGE = 8
@@ -1999,12 +2001,16 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data or ""
     print("CALLBACK DATA:", data)
 
-    if data.startswith(("off|", "offeps|", "dl|")) and user.id not in ADMIN_IDS:
-        await _safe_answer_query(
-            query,
-            "\U0001f512 Recurso restrito.\n\nApenas pessoas autorizadas podem baixar epis\u00f3dios offline por enquanto.",
-            show_alert=True,
-        )
+    if data == "subcheck":
+        await answer_subscription_check(query, user.id)
+        return
+
+    if (
+        data.startswith(("off|", "offeps|", "dl|"))
+        and user.id not in ADMIN_IDS
+        and not is_active_subscriber(user.id)
+    ):
+        await send_offline_paywall(query, user)
         return
 
     if data == "noop_loading":
