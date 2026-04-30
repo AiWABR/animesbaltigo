@@ -490,7 +490,10 @@
         <div class="brand-mark">B</div>
         <div><div class="brand-title">Afiliados</div><div class="brand-sub" id="mobileUserLabel">Baltigo</div></div>
       </div>
-      <span class="pill blue" id="mobileTier">Bronze</span>
+      <div class="actions" style="gap:8px;justify-content:flex-end">
+        <button class="btn ghost" id="backToAnimeAppMobile" type="button" style="min-height:38px;padding:0 11px">← Animes</button>
+        <span class="pill blue" id="mobileTier">Bronze</span>
+      </div>
     </header>
 
     <div class="layout">
@@ -506,6 +509,7 @@
           <button class="nav-btn" data-view="withdrawals"><span class="nav-ico" data-icon="withdrawals"></span><span>Saques</span></button>
           <button class="nav-btn hidden" data-view="admin" id="adminNav"><span class="nav-ico" data-icon="admin"></span><span>Admin</span></button>
         </nav>
+        <button class="btn ghost full" id="backToAnimeApp" type="button" style="margin:12px 0 14px">← Voltar ao catálogo</button>
         <div class="side-mini">
           <strong>Garantia automatica</strong>
           <span>As comissões ficam em garantia por 7 dias antes de liberar para saque.</span>
@@ -734,6 +738,16 @@
       const date = new Date(String(value).replace(" ", "T") + "Z");
       if (Number.isNaN(date.getTime())) return value;
       return date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function animeAppHref() {
+      const url = new URL("./index.html", location.href);
+      if (userId) url.searchParams.set("user_id", userId);
+      return url.toString();
+    }
+
+    function backToAnimeApp() {
+      location.href = animeAppHref();
     }
 
     function statusLabel(value) {
@@ -1281,6 +1295,9 @@
     $("saveSettingsBtn").onclick = () => saveSettings().catch(showError);
     $("drawerClose").onclick = () => document.body.classList.remove("drawer-open");
     $("drawerBackdrop").onclick = () => document.body.classList.remove("drawer-open");
+
+    $("backToAnimeApp")?.addEventListener("click", backToAnimeApp);
+    $("backToAnimeAppMobile")?.addEventListener("click", backToAnimeApp);
 
     renderSkeleton();
     loadSummary().catch(showError);
