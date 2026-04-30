@@ -11,11 +11,11 @@ try:
 except Exception:
     pass
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8675150552:AAHoUu64RoMPHNdaChP9RQGF0iz-tk7Crbo").strip()
-API_ID = int(os.getenv("API_ID", "39909232") or "0")
-API_HASH = os.getenv("API_HASH", "af7a08316fb157de8396ce7d38bae2d5").strip()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "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").strip()
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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").strip()
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+API_ID = int(os.getenv("API_ID", "") or "0")
+API_HASH = os.getenv("API_HASH", "").strip()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 
 SOURCE_SITE_BASE = os.getenv("SOURCE_SITE_BASE", "https://animefire.io").strip().rstrip("/")
 
