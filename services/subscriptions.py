@@ -40,6 +40,8 @@ PLAN_DAYS = {
     "semanal": 7,
     "ouro": 30,
     "mensal": 30,
+    "trimestral": 90,
+    "semestral": 180,
     "diamante": 365,
     "anual": 365,
     "rubi": 36500,
