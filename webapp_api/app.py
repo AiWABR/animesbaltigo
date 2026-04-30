@@ -29,13 +29,13 @@ from services.animefire_client import (
 )
 from services.recent_episodes_client import get_recent_episodes
 from services.subscriptions import (
-    APPROVED_EVENTS,
-    CANCEL_EVENTS,
     activate_from_cakto,
     deactivate_from_cakto,
     extract_event_type,
     get_active_subscription,
     init_subscriptions_db,
+    is_approved_payload,
+    is_cancel_payload,
 )
 
 BASE_URL = "https://animefire.io"
@@ -1093,6 +1093,14 @@ async def api_cakto_offline_webhook(request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="JSON invalido")
 
+    try:
+        webhook_log = BASE_DIR / "data" / "cakto_offline_webhook.log"
+        webhook_log.parent.mkdir(parents=True, exist_ok=True)
+        with webhook_log.open("a", encoding="utf-8") as fp:
+            fp.write(json.dumps({"ts": int(time.time()), "payload": payload}, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
     received_secret = (
         request.headers.get("x-webhook-secret")
         or request.headers.get("x-cakto-secret")
@@ -1104,10 +1112,10 @@ async def api_cakto_offline_webhook(request: Request):
 
     event_type = extract_event_type(payload)
     try:
-        if event_type in APPROVED_EVENTS:
+        if is_approved_payload(payload):
             sub = activate_from_cakto(payload)
             return {"ok": True, "action": "activated", "subscription": sub}
-        if event_type in CANCEL_EVENTS:
+        if is_cancel_payload(payload):
             sub = deactivate_from_cakto(payload)
             return {"ok": True, "action": "deactivated", "subscription": sub}
     except ValueError as error:
