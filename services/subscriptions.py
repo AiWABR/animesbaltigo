@@ -63,6 +63,40 @@ PLAN_DAYS = {
     "vitalício": 36500,
 }
 
+PLAN_ALIASES = {
+    "9snqsp3": "mensal",
+    "mensal": "mensal",
+    "monthly": "mensal",
+    "30d": "mensal",
+    "30_dias": "mensal",
+    "3fsy24d": "trimestral",
+    "trimestral": "trimestral",
+    "3m": "trimestral",
+    "3_meses": "trimestral",
+    "90d": "trimestral",
+    "90_dias": "trimestral",
+    "32ocvxm": "semestral",
+    "semestral": "semestral",
+    "6m": "semestral",
+    "6_meses": "semestral",
+    "180d": "semestral",
+    "180_dias": "semestral",
+    "u9wz86m": "anual",
+    "anual": "anual",
+    "annual": "anual",
+    "12m": "anual",
+    "12_meses": "anual",
+    "365d": "anual",
+    "365_dias": "anual",
+}
+
+PLAN_LABELS = {
+    "mensal": "Plano mensal",
+    "trimestral": "Plano trimestral",
+    "semestral": "Plano semestral",
+    "anual": "Plano anual",
+}
+
 
 def _connect():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -180,6 +214,26 @@ def _normalize_code(value: Any) -> str:
     return text.strip("_")
 
 
+def normalize_plan(value: Any) -> str:
+    code = _normalize_code(value)
+    if not code:
+        return ""
+    if code in PLAN_ALIASES:
+        return PLAN_ALIASES[code]
+    for alias, plan in PLAN_ALIASES.items():
+        if alias and alias in code:
+            return plan
+    for plan in ("mensal", "trimestral", "semestral", "anual"):
+        if plan in code:
+            return plan
+    return ""
+
+
+def plan_label(plan: Any) -> str:
+    code = normalize_plan(plan) or _normalize_code(plan)
+    return PLAN_LABELS.get(code, _text(plan) or "BaltigoFlix")
+
+
 def _walk_values(payload: Any):
     if isinstance(payload, dict):
         for key, value in payload.items():
@@ -256,6 +310,9 @@ def extract_plan(payload: dict) -> tuple[str, str, int]:
             text = _text(value)
             if text:
                 names.append(text)
+                code = normalize_plan(text)
+                if code:
+                    return code, plan_label(code), int(PLAN_DAYS.get(code) or 30)
     blob = " ".join(names).lower()
     for code, days in PLAN_DAYS.items():
         if code in blob:
@@ -275,6 +332,36 @@ def _extract_order_ids(payload: dict) -> tuple[str, str]:
     return order_id[:120], subscription_id[:120]
 
 
+def _extract_event_id(payload: dict, token: str = "") -> str:
+    priority = {
+        "event_id",
+        "webhook_event_id",
+        "transaction_id",
+        "order_id",
+        "sale_id",
+        "purchase_id",
+        "payment_id",
+        "invoice_id",
+        "subscription_id",
+    }
+    for key, value in _walk_values(payload):
+        if key.lower() in priority:
+            text = _text(value)
+            if text:
+                return text[:160]
+    return _text(payload.get("event_id") or payload.get("id") or token)[:160]
+
+
+def _event_already_processed(conn: sqlite3.Connection, event_id: str) -> bool:
+    if not event_id:
+        return False
+    row = conn.execute(
+        "SELECT 1 FROM subscription_events WHERE event_id = ? LIMIT 1",
+        (event_id,),
+    ).fetchone()
+    return bool(row)
+
+
 def activate_from_cakto(payload: dict) -> dict:
     init_subscriptions_db()
     token = extract_token(payload)
@@ -288,10 +375,14 @@ def activate_from_cakto(payload: dict) -> dict:
     current = get_active_subscription(user_id)
     base = max(now, int((current or {}).get("expires_at") or 0))
     expires_at = base + (days * 86400)
-    event_id = _text(payload.get("event_id") or payload.get("id") or order_id or token)
+    event_id = _extract_event_id(payload, token) or order_id or token
     event_type = extract_event_type(payload)
 
     with _connect() as conn:
+        if _event_already_processed(conn, event_id):
+            current_sub = get_subscription(user_id) or {}
+            current_sub["duplicate_event"] = True
+            return current_sub
         conn.execute(
             """
             INSERT INTO user_subscriptions (
