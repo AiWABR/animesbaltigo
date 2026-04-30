@@ -18,6 +18,7 @@ from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from config import CAKTO_WEBHOOK_SECRET
 from core.http_client import get_http_client
 from services.animefire_client import (
     get_anime_details,
@@ -27,6 +28,15 @@ from services.animefire_client import (
     search_anime,
 )
 from services.recent_episodes_client import get_recent_episodes
+from services.subscriptions import (
+    APPROVED_EVENTS,
+    CANCEL_EVENTS,
+    activate_from_cakto,
+    deactivate_from_cakto,
+    extract_event_type,
+    get_active_subscription,
+    init_subscriptions_db,
+)
 
 BASE_URL = "https://animefire.io"
 
@@ -776,6 +786,7 @@ async def _get_paginated_section_page(section: str, page: int) -> dict:
 @app.on_event("startup")
 async def _startup_tasks():
     # Pre-create the proxy client on startup so the first request is instant.
+    init_subscriptions_db()
     await get_proxy_client()
 
     async def _recent_refresher():
@@ -1063,6 +1074,46 @@ async def invalidate_runtime(scope: str = Query("all")):
     _invalidate_prefix("home:")
     _emit_event("manual_invalidate", scope)
     return {"ok": True, "scope": scope}
+
+
+# =============================================================================
+# OFFLINE SUBSCRIPTIONS / CAKTO
+# =============================================================================
+
+@app.get("/api/offline/subscription")
+async def api_offline_subscription(user_id: int = Query(...)):
+    sub = get_active_subscription(int(user_id))
+    return {"ok": True, "active": bool(sub), "subscription": sub}
+
+
+@app.post("/api/cakto/offline-webhook")
+async def api_cakto_offline_webhook(request: Request):
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON invalido")
+
+    received_secret = (
+        request.headers.get("x-webhook-secret")
+        or request.headers.get("x-cakto-secret")
+        or request.headers.get("x-cakto-signature")
+        or str(payload.get("secret") or "").strip()
+    )
+    if CAKTO_WEBHOOK_SECRET and received_secret != CAKTO_WEBHOOK_SECRET:
+        raise HTTPException(status_code=401, detail="Webhook nao autorizado")
+
+    event_type = extract_event_type(payload)
+    try:
+        if event_type in APPROVED_EVENTS:
+            sub = activate_from_cakto(payload)
+            return {"ok": True, "action": "activated", "subscription": sub}
+        if event_type in CANCEL_EVENTS:
+            sub = deactivate_from_cakto(payload)
+            return {"ok": True, "action": "deactivated", "subscription": sub}
+    except ValueError as error:
+        return {"ok": True, "ignored": True, "reason": str(error), "event_type": event_type}
+
+    return {"ok": True, "ignored": True, "reason": "evento_nao_usado", "event_type": event_type}
 
 
 # =============================================================================
