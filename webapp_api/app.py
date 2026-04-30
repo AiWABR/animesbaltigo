@@ -28,15 +28,8 @@ from services.animefire_client import (
     search_anime,
 )
 from services.recent_episodes_client import get_recent_episodes
-from services.subscriptions import (
-    activate_from_cakto,
-    deactivate_from_cakto,
-    extract_event_type,
-    get_active_subscription,
-    init_subscriptions_db,
-    is_approved_payload,
-    is_cancel_payload,
-)
+from services.cakto_gateway import extract_webhook_secret_values, process_cakto_webhook
+from services.subscriptions import get_active_subscription, init_subscriptions_db
 
 BASE_URL = "https://animefire.io"
 
@@ -1101,27 +1094,18 @@ async def api_cakto_offline_webhook(request: Request):
     except Exception:
         pass
 
-    received_secret = (
-        request.headers.get("x-webhook-secret")
-        or request.headers.get("x-cakto-secret")
-        or request.headers.get("x-cakto-signature")
-        or str(payload.get("secret") or "").strip()
-    )
-    if CAKTO_WEBHOOK_SECRET and received_secret != CAKTO_WEBHOOK_SECRET:
+    received_secrets = [
+        request.headers.get("x-webhook-secret"),
+        request.headers.get("x-cakto-secret"),
+        request.headers.get("x-cakto-signature"),
+        request.headers.get("x-cakto-token"),
+        *extract_webhook_secret_values(payload),
+    ]
+    if CAKTO_WEBHOOK_SECRET and CAKTO_WEBHOOK_SECRET not in {str(item or "").strip() for item in received_secrets}:
         raise HTTPException(status_code=401, detail="Webhook nao autorizado")
 
-    event_type = extract_event_type(payload)
-    try:
-        if is_approved_payload(payload):
-            sub = activate_from_cakto(payload)
-            return {"ok": True, "action": "activated", "subscription": sub}
-        if is_cancel_payload(payload):
-            sub = deactivate_from_cakto(payload)
-            return {"ok": True, "action": "deactivated", "subscription": sub}
-    except ValueError as error:
-        return {"ok": True, "ignored": True, "reason": str(error), "event_type": event_type}
-
-    return {"ok": True, "ignored": True, "reason": "evento_nao_usado", "event_type": event_type}
+    result = process_cakto_webhook(payload)
+    return result
 
 
 # =============================================================================
