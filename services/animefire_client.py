@@ -903,12 +903,17 @@ def _extract_download_quality_urls(html: str, base_url: str = "") -> dict[str, s
     quality_map: dict[str, str] = {}
 
     for anchor in soup.find_all("a"):
-        href = (anchor.get("href") or "").strip()
+        href = ""
+        for attr in ("download", "href"):
+            candidate = (anchor.get(attr) or "").strip()
+            if not candidate or not candidate.startswith(("http://", "https://", "//", "/")):
+                continue
+            candidate = _make_absolute_url(candidate, base_url) if base_url else _decode_possible_escaped_url(candidate)
+            candidate = _clean_lightspeed_url(candidate)
+            if _is_direct_video_url(candidate):
+                href = candidate
+                break
         if not href:
-            continue
-        href = _make_absolute_url(href, base_url) if base_url else _decode_possible_escaped_url(href)
-        href = _clean_lightspeed_url(href)
-        if not _is_direct_video_url(href):
             continue
 
         label = _clean(anchor.get_text(" ", strip=True)).upper()
