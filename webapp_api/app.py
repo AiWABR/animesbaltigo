@@ -63,6 +63,10 @@ HEADERS = {
     "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
 }
 
+
+def _is_sushi_source() -> bool:
+    return ANIME_SOURCE == "sushi" or "sushianimes" in BASE_URL.lower()
+
 HOME_SECTION_LIMIT = 12
 GRID_PAGE_LIMIT = 24
 
@@ -87,10 +91,10 @@ PROXY_MAX_CONNECTIONS = 100
 PROXY_MAX_KEEPALIVE = 20
 
 SECTIONS: dict[str, dict[str, str]] = {
-    "recentes": {"title": "Últimos Episódios", "kind": "recent"},
-    "em_lancamento": {"title": "Em lançamento", "slug": "em-lancamento"},
+    "recentes": {"title": "Novos episódios", "kind": "recent"},
+    "em_lancamento": {"title": "Animes recentes", "slug": "em-lancamento"},
     "atualizados": {"title": "Atualizados", "slug": "animes-atualizados"},
-    "top": {"title": "Top Animes", "slug": "top-animes"},
+    "top": {"title": "Em alta", "slug": "top-animes"},
     "legendados": {"title": "Legendados", "slug": "lista-de-animes-legendados"},
     "dublados": {"title": "Dublados", "slug": "lista-de-animes-dublados"},
     "acao": {"title": "Ação", "slug": "genero/acao"},
@@ -371,7 +375,7 @@ def _section_conf(section: str) -> dict[str, str] | None:
 
 
 def _section_url(slug: str, page: int) -> str:
-    if ANIME_SOURCE == "sushi" or "sushianimes" in BASE_URL.lower():
+    if _is_sushi_source():
         return BASE_URL
     if page <= 1:
         return f"{BASE_URL}/{slug}"
@@ -426,7 +430,7 @@ async def _get(url: str) -> str:
 
 def _extract_slug_from_href(href: str) -> str:
     href = (href or "").strip()
-    if ANIME_SOURCE == "sushi" or "sushianimes" in BASE_URL.lower():
+    if _is_sushi_source():
         match = re.search(r"/anime/([^/?#]+?)(?:/)?(?:\?.*)?$", href)
         if not match:
             return ""
@@ -437,8 +441,15 @@ def _extract_slug_from_href(href: str) -> str:
     return match.group(1).strip() if match else ""
 
 
+def _title_from_slug(slug: str) -> str:
+    value = str(slug or "").strip("/")
+    value = re.sub(r"-\d+-season-\d+-episode$", "", value)
+    value = re.sub(r"-\d+$", "", value)
+    return value.replace("-", " ").title()
+
+
 def _extract_last_page(page_html: str, slug: str) -> int:
-    if ANIME_SOURCE == "sushi" or "sushianimes" in BASE_URL.lower():
+    if _is_sushi_source():
         return 1
     soup = BeautifulSoup(page_html, "html.parser")
     max_page = 1
@@ -454,7 +465,7 @@ def _extract_last_page(page_html: str, slug: str) -> int:
 def _extract_listing_cards(page_html: str) -> list[dict]:
     soup = BeautifulSoup(page_html, "html.parser")
     found: dict[str, dict] = {}
-    selector = "a[href*='/anime/']" if (ANIME_SOURCE == "sushi" or "sushianimes" in BASE_URL.lower()) else "a[href*='/animes/']"
+    selector = "a[href*='/anime/']" if _is_sushi_source() else "a[href*='/animes/']"
     for anchor in soup.select(selector):
         href = (anchor.get("href") or "").strip()
         anime_id = _extract_slug_from_href(href)
@@ -472,7 +483,7 @@ def _extract_listing_cards(page_html: str) -> list[dict]:
             cover = img.get("data-src") or img.get("src") or ""
             title = title or _clean(img.get("alt") or "")
 
-        title = title or anime_id.replace("-", " ").title()
+        title = title or _title_from_slug(anime_id)
         dubbed = _is_dubbed(anime_id, title)
 
         found[anime_id] = {
@@ -493,6 +504,55 @@ def _extract_listing_cards(page_html: str) -> list[dict]:
             "url": urljoin(BASE_URL, href),
         }
     return list(found.values())
+
+
+def _sushi_section_matches(item: dict[str, Any], section: str) -> bool:
+    text = _normalize_text(" ".join([
+        str(item.get("id") or ""),
+        str(item.get("title") or ""),
+        " ".join(str(g) for g in item.get("genres") or []),
+    ]))
+    is_dubbed = bool(item.get("is_dubbed"))
+    if section == "dublados":
+        return is_dubbed
+    if section == "legendados":
+        return not is_dubbed
+    aliases = {
+        "acao": ("acao", "action", "battle", "shounen", "shonen"),
+        "aventura": ("aventura", "adventure", "isekai"),
+        "comedia": ("comedia", "comedy"),
+        "drama": ("drama",),
+        "fantasia": ("fantasia", "fantasy", "isekai", "mahou"),
+        "romance": ("romance", "romantico", "shoujo", "shojo"),
+        "sobrenatural": ("sobrenatural", "supernatural", "youkai", "yokai"),
+        "suspense": ("suspense", "misterio", "mystery", "thriller"),
+    }
+    if section in aliases:
+        return any(alias in text for alias in aliases[section])
+    return True
+
+
+def _score_value(item: dict[str, Any]) -> float:
+    try:
+        return float(str(item.get("score") or "0").split("/", 1)[0] or 0)
+    except Exception:
+        return 0.0
+
+
+async def _enrich_sushi_home_cards(raw_items: list[dict[str, Any]], section: str) -> list[dict[str, Any]]:
+    shaped_items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in raw_items:
+        anime_id = item.get("id") or ""
+        if not anime_id or anime_id in seen:
+            continue
+        seen.add(anime_id)
+        shaped = item
+        if _has_minimum_catalog_fields(shaped) and _sushi_section_matches(shaped, section):
+            shaped_items.append(shaped)
+        if len(shaped_items) >= GRID_PAGE_LIMIT * 3:
+            break
+    return shaped_items
 
 
 def _shape_details(data: dict, fallback_id: str = "") -> dict:
@@ -564,6 +624,9 @@ def _shape_episode_payload(anime_id: str, episode: str, quality: str, item: dict
 
 def _parse_episode_number(value: str | int | float | None) -> Decimal | None:
     raw = str(value or "").strip().replace(",", ".")
+    season_match = re.search(r"^[sS]?(\d+)[eE:.-](\d+)$", raw)
+    if season_match:
+        return Decimal(int(season_match.group(1)) * 10000 + int(season_match.group(2)))
     match = re.search(r"\d+(?:\.\d+)?", raw)
     if not match:
         return None
@@ -625,6 +688,8 @@ def _normalize_episodes(items: list[dict[str, Any]] | None) -> list[dict[str, An
 
 
 def _has_minimum_catalog_fields(item: dict[str, Any]) -> bool:
+    if _is_sushi_source():
+        return bool(item.get("id") and item.get("title"))
     return bool(item.get("id") and item.get("title") and (item.get("cover_url") or item.get("banner_url")))
 
 
@@ -823,6 +888,40 @@ async def _get_paginated_section_page(section: str, page: int) -> dict:
         return await _get_recent_page(page)
 
     slug = conf["slug"]
+
+    if _is_sushi_source():
+        async def sushi_factory():
+            page_html = await _get(BASE_URL)
+            raw_items = _extract_listing_cards(page_html)
+            items = await _enrich_sushi_home_cards(raw_items, section)
+
+            if section == "em_lancamento":
+                items = sorted(items, key=lambda item: item.get("title") or "")
+            elif section == "top":
+                items = sorted(
+                    items,
+                    key=_score_value,
+                    reverse=True,
+                )
+
+            total = len(items)
+            total_pages = max(1, (total + GRID_PAGE_LIMIT - 1) // GRID_PAGE_LIMIT) if total else 1
+            current_page = min(max(1, page), total_pages)
+            start = (current_page - 1) * GRID_PAGE_LIMIT
+            end = start + GRID_PAGE_LIMIT
+            return {
+                "section": section,
+                "title": conf["title"],
+                "page": current_page,
+                "limit": GRID_PAGE_LIMIT,
+                "total_items": total,
+                "total_pages": total_pages,
+                "has_next": current_page < total_pages,
+                "has_prev": current_page > 1,
+                "items": items[start:end],
+            }
+
+        return await _cached(f"sushi-page:{section}:{page}", SECTION_TTL, sushi_factory)
 
     async def meta_factory():
         first_html = await _get(_section_url(slug, 1))
