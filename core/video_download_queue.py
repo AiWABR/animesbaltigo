@@ -101,6 +101,49 @@ def _is_hls_url(url: str) -> bool:
     return ".m3u8" in (url or "").lower()
 
 
+def _safe_url_label(url: str) -> str:
+    parsed = urlparse(url or "")
+    if not parsed.netloc:
+        return "origem desconhecida"
+    return f"{parsed.netloc}{parsed.path}"
+
+
+def _format_download_error(error: Exception, job: VideoDownloadJob) -> str:
+    source = _safe_url_label(job.video_url)
+
+    if isinstance(error, httpx.ConnectTimeout):
+        return (
+            "Timeout ao conectar no servidor do video.\n"
+            f"Origem: {source}\n\n"
+            "O VPS nao conseguiu abrir conexao com esse host. Teste no servidor com curl -4; "
+            "se tambem travar, e rota/bloqueio entre o VPS e o host do video."
+        )
+
+    if isinstance(error, httpx.ReadTimeout):
+        return (
+            "O servidor do video conectou, mas parou de responder durante o download.\n"
+            f"Origem: {source}\n"
+            "Tente novamente ou use outra qualidade."
+        )
+
+    if isinstance(error, httpx.HTTPStatusError):
+        status = error.response.status_code
+        if status in {401, 403}:
+            return (
+                f"O host do video bloqueou o link assinado com HTTP {status}.\n"
+                f"Origem: {source}\n"
+                "Gere o episodio de novo para renovar o token; se continuar, o host esta rejeitando o acesso do servidor."
+            )
+        return f"O host do video respondeu HTTP {status}.\nOrigem: {source}"
+
+    if isinstance(error, httpx.RequestError):
+        detail = str(error).strip() or error.__class__.__name__
+        return f"Erro de rede ao baixar o video: {detail}\nOrigem: {source}"
+
+    detail = str(error).strip() or repr(error)
+    return detail[:1500]
+
+
 def _human_size(value: int | None) -> str:
     if not value:
         return "0 MB"
@@ -450,8 +493,10 @@ async def _process_job(app, job: VideoDownloadJob) -> None:
                 ),
             )
     except Exception as error:
+        print(f"[VIDEO_DOWNLOAD] failed key={key} error={error!r} source={_safe_url_label(job.video_url)}")
+        error_text = _format_download_error(error, job)
         for message in list(entry["status_messages"]):
-            await _safe_edit(message, f"<b>Falha ao baixar epis\u00f3dio:</b>\n<code>{html.escape(str(error))}</code>")
+            await _safe_edit(message, f"<b>Falha ao baixar epis\u00f3dio:</b>\n<code>{html.escape(error_text)}</code>")
     finally:
         await _delete_downloaded_file(path)
         try:
