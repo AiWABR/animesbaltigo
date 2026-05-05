@@ -6,7 +6,7 @@ import re
 import time
 import unicodedata
 from pathlib import Path
-from urllib.parse import quote, unquote, urljoin
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urljoin, urlsplit, urlunsplit
 
 import httpx
 from bs4 import BeautifulSoup
@@ -873,6 +873,66 @@ def _extract_video_api_url(html: str, base_url: str = "") -> str:
     return ""
 
 
+def _clean_lightspeed_url(url: str) -> str:
+    url = _decode_possible_escaped_url(url)
+    if not url:
+        return ""
+    try:
+        parts = urlsplit(url)
+        query_items = [
+            (key, value)
+            for key, value in parse_qsl(parts.query, keep_blank_values=True)
+            if key.lower() != "title"
+        ]
+        return urlunsplit((
+            parts.scheme,
+            parts.netloc,
+            parts.path,
+            urlencode(query_items, doseq=True),
+            parts.fragment,
+        ))
+    except Exception:
+        return url
+
+
+def _extract_download_quality_urls(html: str, base_url: str = "") -> dict[str, str]:
+    if not html:
+        return {}
+
+    soup = BeautifulSoup(html, "html.parser")
+    quality_map: dict[str, str] = {}
+
+    for anchor in soup.find_all("a"):
+        href = (anchor.get("href") or "").strip()
+        if not href:
+            continue
+        href = _make_absolute_url(href, base_url) if base_url else _decode_possible_escaped_url(href)
+        href = _clean_lightspeed_url(href)
+        if not _is_direct_video_url(href):
+            continue
+
+        label = _clean(anchor.get_text(" ", strip=True)).upper()
+        if label in {"F-HD", "FHD", "FULLHD", "1080P"}:
+            quality = "FULLHD"
+        elif label in {"HD", "720P"}:
+            quality = "HD"
+        elif label in {"SD", "360P", "480P"}:
+            quality = "SD"
+        else:
+            quality = _normalize_quality_label(_extract_quality_name(href)) or ""
+
+        if quality:
+            quality_map.setdefault(quality, href)
+
+    if "HD" not in quality_map:
+        if "FULLHD" in quality_map:
+            quality_map["HD"] = quality_map["FULLHD"]
+        elif "SD" in quality_map:
+            quality_map["HD"] = quality_map["SD"]
+
+    return quality_map
+
+
 def _map_quality_urls(urls: list[str]) -> dict[str, str]:
     quality_map = {}
 
@@ -979,6 +1039,29 @@ async def _get_episode_video_api_urls(
             urls.append(src)
 
     return _map_quality_urls(urls)
+
+
+async def _get_episode_download_urls(
+    base_slug: str,
+    episode: str,
+) -> dict[str, str]:
+    safe_slug = _normalize_episode_slug(base_slug)
+    episode_url = f"{BASE_URL}/animes/{safe_slug}/{episode}"
+    download_url = f"{BASE_URL}/download/{safe_slug}/{episode}?{int(time.time())}"
+
+    try:
+        html_doc = await _request_text(
+            download_url,
+            headers={
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Referer": episode_url,
+            },
+        )
+    except Exception as error:
+        print(f"[DOWNLOAD_PAGE] erro={repr(error)} url={download_url}")
+        return {}
+
+    return _extract_download_quality_urls(html_doc, base_url=download_url)
 
 
 def _merge_anime_data(local_data: dict, anilist_data: dict | None) -> dict:
@@ -1700,6 +1783,10 @@ async def _try_blogger_or_googlevideo(base_slug: str, episode: str) -> dict[str,
         episode_html = await _get_episode_page_html(base_slug, episode)
         episode_url = f"{BASE_URL}/animes/{_normalize_episode_slug(base_slug)}/{episode}"
         fallback_embed = ""
+
+        download_map = await _get_episode_download_urls(base_slug, episode)
+        if download_map:
+            return download_map
 
         video_api_map = await _get_episode_video_api_urls(base_slug, episode, episode_html)
         if video_api_map:
