@@ -16,12 +16,18 @@ from telegram.error import TelegramError, TimedOut
 from config import (
     ADMIN_IDS,
     TELETHON_UPLOAD_MAX_MB,
+    UPSTREAM_PROXY_URL,
     VIDEO_CACHE_CLEANUP_INTERVAL_SECONDS,
     VIDEO_CACHE_TTL_HOURS,
+    VIDEO_DOWNLOAD_CHUNK_MB,
     VIDEO_DOWNLOAD_CACHE_DIR,
     VIDEO_DOWNLOAD_MAX_MB,
+    VIDEO_DOWNLOAD_PARALLEL,
+    VIDEO_DOWNLOAD_PARALLEL_WORKERS,
+    VIDEO_DOWNLOAD_PART_MB,
     VIDEO_DOWNLOAD_PROTECT_CONTENT,
     VIDEO_DOWNLOAD_QUEUE_LIMIT,
+    VIDEO_DOWNLOAD_TRUST_ENV,
     VIDEO_DOWNLOAD_WORKERS,
     VIDEO_UPLOAD_MAX_MB,
 )
@@ -41,7 +47,9 @@ HEADERS = {
 
 FORCE_IPV4 = os.getenv("HTTP_FORCE_IPV4", "1").strip() != "0"
 
-CHUNK_SIZE = 4 * 1024 * 1024
+CHUNK_SIZE = max(1, VIDEO_DOWNLOAD_CHUNK_MB) * 1024 * 1024
+PART_SIZE = max(1, VIDEO_DOWNLOAD_PART_MB) * 1024 * 1024
+PARALLEL_WORKERS = max(1, VIDEO_DOWNLOAD_PARALLEL_WORKERS)
 PROGRESS_INTERVAL = 3.0
 MAX_BYTES = max(1, VIDEO_DOWNLOAD_MAX_MB) * 1024 * 1024
 UPLOAD_MAX_BYTES = max(1, VIDEO_UPLOAD_MAX_MB) * 1024 * 1024
@@ -61,6 +69,7 @@ class VideoDownloadJob:
     title: str
     video_url: str
     caption: str
+    video_urls: list[dict] | None = None
 
 
 _workers: list[asyncio.Task] = []
@@ -142,6 +151,46 @@ def _format_download_error(error: Exception, job: VideoDownloadJob) -> str:
 
     detail = str(error).strip() or repr(error)
     return detail[:1500]
+
+
+def _job_video_candidates(job: VideoDownloadJob) -> list[dict]:
+    candidates = [{"url": job.video_url, "label": job.quality}]
+    for item in job.video_urls or []:
+        if not isinstance(item, dict):
+            continue
+        candidates.append({
+            "url": str(item.get("url") or "").strip(),
+            "label": str(item.get("label") or job.quality).strip() or job.quality,
+        })
+
+    unique = []
+    seen = set()
+    for item in candidates:
+        url = str(item.get("url") or "").strip()
+        if not url or url in seen:
+            continue
+        seen.add(url)
+        unique.append({"url": url, "label": str(item.get("label") or job.quality).strip() or job.quality})
+    return unique
+
+
+def _should_try_next_download_error(error: Exception) -> bool:
+    if isinstance(error, (httpx.HTTPStatusError, httpx.ReadTimeout, httpx.RemoteProtocolError)):
+        return True
+    text = str(error or "").lower()
+    return any(token in text for token in ("403", "404", "410", "429", "html", "video direto"))
+
+
+def _build_download_transport() -> httpx.AsyncHTTPTransport:
+    kwargs = {
+        "http1": True,
+        "http2": False,
+    }
+    if UPSTREAM_PROXY_URL:
+        kwargs["proxy"] = UPSTREAM_PROXY_URL
+    if FORCE_IPV4:
+        kwargs["local_address"] = "0.0.0.0"
+    return httpx.AsyncHTTPTransport(**kwargs)
 
 
 def _human_size(value: int | None) -> str:
@@ -252,6 +301,33 @@ async def _upload_progress(entry: dict, job: VideoDownloadJob, current: int, tot
 
 
 async def _download_file(job: VideoDownloadJob, entry: dict) -> Path:
+    last_error: Exception | None = None
+    for candidate in _job_video_candidates(job):
+        attempt = VideoDownloadJob(
+            user_id=job.user_id,
+            chat_id=job.chat_id,
+            anime_id=job.anime_id,
+            episode=job.episode,
+            quality=candidate["label"],
+            title=job.title,
+            video_url=candidate["url"],
+            caption=job.caption,
+            video_urls=None,
+        )
+        try:
+            return await _download_single_file(attempt, entry)
+        except Exception as error:
+            last_error = error
+            if not _should_try_next_download_error(error):
+                raise
+            print(f"[VIDEO_DOWNLOAD] candidate_failed label={candidate['label']!r} error={error!r}")
+
+    if last_error:
+        raise last_error
+    raise RuntimeError("Nenhum player forneceu um arquivo de video direto.")
+
+
+async def _download_single_file(job: VideoDownloadJob, entry: dict) -> Path:
     if not _is_downloadable_url(job.video_url):
         raise RuntimeError("Esse link de video nao pode ser baixado direto.")
 
@@ -270,37 +346,137 @@ async def _download_file(job: VideoDownloadJob, entry: dict) -> Path:
         return await _download_hls(job, entry, target, temp)
 
     timeout = httpx.Timeout(connect=10.0, read=60.0, write=60.0, pool=10.0)
-    transport = None
-    if FORCE_IPV4:
-        transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=HEADERS, transport=transport) as client:
-        async with client.stream("GET", job.video_url) as response:
-            response.raise_for_status()
-            total = int(response.headers.get("content-length") or 0) or None
-            if total and total > MAX_BYTES:
-                raise RuntimeError(f"Arquivo muito grande para enviar: {_human_size(total)}.")
-            if total:
-                _raise_if_too_large_for_upload(total)
+    async with httpx.AsyncClient(
+        timeout=timeout,
+        follow_redirects=True,
+        headers=HEADERS,
+        transport=_build_download_transport(),
+        trust_env=VIDEO_DOWNLOAD_TRUST_ENV,
+    ) as client:
+        probe = await _probe_direct_download(client, job.video_url)
+        total = probe["total"]
+        if total and total > MAX_BYTES:
+            raise RuntimeError(f"Arquivo muito grande para enviar: {_human_size(total)}.")
+        if total:
+            _raise_if_too_large_for_upload(total)
 
-            downloaded = 0
-            last_progress = 0.0
-            with open(temp, "wb") as file:
-                async for chunk in response.aiter_bytes(CHUNK_SIZE):
-                    if not chunk:
-                        continue
-                    downloaded += len(chunk)
-                    if downloaded > MAX_BYTES:
-                        raise RuntimeError(f"Arquivo passou do limite de {_human_size(MAX_BYTES)}.")
-                    file.write(chunk)
-
-                    now = time.monotonic()
-                    if now - last_progress >= PROGRESS_INTERVAL:
-                        last_progress = now
-                        await _progress(entry, job, downloaded, total)
+        if VIDEO_DOWNLOAD_PARALLEL and probe["range"] and total and total >= PART_SIZE * 2:
+            await _download_file_parallel(client, job, entry, temp, total)
+        else:
+            await _download_file_stream(client, job, entry, temp, total)
 
     temp.replace(target)
     _raise_if_too_large_for_upload(target.stat().st_size)
     return target
+
+
+async def _probe_direct_download(client: httpx.AsyncClient, url: str) -> dict:
+    headers = dict(HEADERS)
+    headers["Range"] = "bytes=0-0"
+    async with client.stream("GET", url, headers=headers) as response:
+        response.raise_for_status()
+
+        content_type = str(response.headers.get("content-type") or "").lower()
+        if content_type and "text/html" in content_type:
+            raise RuntimeError("Esse player ainda nao fornece um arquivo de video direto.")
+
+        content_range = str(response.headers.get("content-range") or "")
+        total = 0
+        match = re.search(r"/(\d+)\s*$", content_range)
+        if match:
+            total = int(match.group(1))
+        else:
+            total = int(response.headers.get("content-length") or 0)
+
+        accepts_range = response.status_code == 206 or "bytes" in str(response.headers.get("accept-ranges") or "").lower()
+        return {"total": total or None, "range": bool(accepts_range and total)}
+
+
+async def _download_file_stream(
+    client: httpx.AsyncClient,
+    job: VideoDownloadJob,
+    entry: dict,
+    temp: Path,
+    total: int | None,
+) -> None:
+    downloaded = 0
+    last_progress = 0.0
+    async with client.stream("GET", job.video_url) as response:
+        response.raise_for_status()
+        content_type = str(response.headers.get("content-type") or "").lower()
+        if content_type and "text/html" in content_type:
+            raise RuntimeError("Esse player ainda nao fornece um arquivo de video direto.")
+        if total is None:
+            total = int(response.headers.get("content-length") or 0) or None
+
+        with open(temp, "wb") as file:
+            async for chunk in response.aiter_bytes(CHUNK_SIZE):
+                if not chunk:
+                    continue
+                downloaded += len(chunk)
+                if downloaded > MAX_BYTES:
+                    raise RuntimeError(f"Arquivo passou do limite de {_human_size(MAX_BYTES)}.")
+                file.write(chunk)
+
+                now = time.monotonic()
+                if now - last_progress >= PROGRESS_INTERVAL:
+                    last_progress = now
+                    await _progress(entry, job, downloaded, total)
+
+
+async def _download_file_parallel(
+    client: httpx.AsyncClient,
+    job: VideoDownloadJob,
+    entry: dict,
+    temp: Path,
+    total: int,
+) -> None:
+    await _progress(entry, job, 0, total)
+    temp.parent.mkdir(parents=True, exist_ok=True)
+    with open(temp, "wb") as file:
+        file.truncate(total)
+
+    ranges = [(start, min(start + PART_SIZE - 1, total - 1)) for start in range(0, total, PART_SIZE)]
+    semaphore = asyncio.Semaphore(min(PARALLEL_WORKERS, len(ranges)))
+    downloaded = 0
+    last_progress = 0.0
+    progress_lock = asyncio.Lock()
+    file_lock = asyncio.Lock()
+
+    async def save_part(start: int, data: bytes) -> None:
+        async with file_lock:
+            with open(temp, "r+b") as file:
+                file.seek(start)
+                file.write(data)
+
+    async def mark_progress(size: int) -> None:
+        nonlocal downloaded, last_progress
+        async with progress_lock:
+            downloaded += size
+            now = time.monotonic()
+            if downloaded >= total or now - last_progress >= PROGRESS_INTERVAL:
+                last_progress = now
+                await _progress(entry, job, downloaded, total)
+
+    async def download_part(start: int, end: int) -> None:
+        async with semaphore:
+            headers = dict(HEADERS)
+            headers["Range"] = f"bytes={start}-{end}"
+            response = await client.get(job.video_url, headers=headers)
+            response.raise_for_status()
+            if response.status_code != 206:
+                raise RuntimeError("O servidor nao manteve download por partes.")
+            data = response.content
+            expected = end - start + 1
+            if len(data) != expected:
+                raise RuntimeError("Uma parte do download veio incompleta.")
+            await save_part(start, data)
+            await mark_progress(len(data))
+
+    await asyncio.gather(*(download_part(start, end) for start, end in ranges))
+
+    if temp.stat().st_size != total:
+        raise RuntimeError("O download terminou com tamanho diferente do esperado.")
 
 
 async def _delete_downloaded_file(path: Path | None) -> None:
