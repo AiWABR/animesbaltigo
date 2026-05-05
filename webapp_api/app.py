@@ -9,7 +9,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 from decimal import Decimal, InvalidOperation
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 import httpx
 from bs4 import BeautifulSoup
@@ -1527,6 +1527,12 @@ async def proxy_stream(
         raise HTTPException(status_code=502, detail="Erro ao carregar vídeo")
 
     content_type = upstream.headers.get("content-type", "application/octet-stream")
+    if content_type.lower().startswith("application/octet-stream"):
+        hinted_type = (parse_qs(urlsplit(url).query).get("type") or [""])[0]
+        if hinted_type.startswith("video/"):
+            content_type = hinted_type
+        elif urlsplit(url).path.lower().endswith(".mp4"):
+            content_type = "video/mp4"
 
     # Build the response headers we will forward to the browser.
     passthrough: dict[str, str] = {
