@@ -5,6 +5,8 @@ import os
 
 import httpx
 
+from config import UPSTREAM_PROXY_URL
+
 _CLIENT: httpx.AsyncClient | None = None
 _CLIENT_LOCK = asyncio.Lock()
 
@@ -48,6 +50,8 @@ def _build_transport() -> httpx.AsyncHTTPTransport:
         "http2": False,
         "limits": _LIMITS,
     }
+    if UPSTREAM_PROXY_URL:
+        kwargs["proxy"] = UPSTREAM_PROXY_URL
     if _FORCE_IPV4:
         kwargs["local_address"] = "0.0.0.0"
     return httpx.AsyncHTTPTransport(**kwargs)
