@@ -16,6 +16,12 @@ _HTTP_HEADERS = {
 
 
 def _clean(text: str) -> str:
+    text = str(text or "")
+    if "Ã" in text or "Â" in text:
+        try:
+            text = text.encode("latin-1").decode("utf-8")
+        except UnicodeError:
+            pass
     return re.sub(r"\s+", " ", (text or "")).strip()
 
 
