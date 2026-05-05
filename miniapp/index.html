@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-  <title>BALTIGO — Anime Streaming</title>
-  <meta name="theme-color" content="#03040b" />
+  <title>Baltigo — Anime Streaming</title>
+  <meta name="theme-color" content="#08090d" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -368,6 +368,42 @@
       .anil-tab{padding:7px 10px;font-size:11px}
     }
     @media(max-width:360px){.card-grid{grid-template-columns:repeat(2,1fr)}}
+
+    /* SushiAnimes skin */
+    :root{
+      --bg0:#07080b;--bg1:#0b0d12;--bg2:#10131a;--bg3:#151a23;--bg4:#1d2430;
+      --glass:rgba(255,255,255,0.055);--glass2:rgba(255,255,255,0.085);--glass3:rgba(255,255,255,0.13);
+      --v:#ec4899;--v2:#f472b6;--v3:#f9a8d4;--vg:rgba(236,72,153,0.24);
+      --c:#14b8a6;--c2:#2dd4bf;--c3:#5eead4;
+      --rose:#fb7185;--amber:#fbbf24;--green:#22c55e;
+      --brand:linear-gradient(135deg,#ff4fa3 0%,#ff7a59 58%,#ffd166 100%);
+      --brand2:linear-gradient(135deg,#ff8abf 0%,#ffb05d 55%,#ffe08a 100%);
+      --card-grad:linear-gradient(160deg,rgba(236,72,153,0.1) 0%,rgba(20,184,166,0.06) 100%);
+      --text:#fff7fb;--text2:#aeb6c5;--text3:#697284;
+      --border:rgba(255,255,255,0.085);--border2:rgba(255,255,255,0.15);--borderv:rgba(255,122,89,0.46);
+      --sv:0 8px 30px rgba(255,79,163,0.24);
+      --r0:6px;--r1:8px;--r2:10px;--r3:14px;--r4:18px;
+    }
+    body::before{background:
+      radial-gradient(ellipse 70% 48% at 105% -10%,rgba(255,79,163,0.12) 0%,transparent 55%),
+      radial-gradient(ellipse 55% 42% at -10% 95%,rgba(45,212,191,0.1) 0%,transparent 58%),
+      linear-gradient(180deg,rgba(255,255,255,0.018),transparent 38%);
+    }
+    .topbar::before{background:linear-gradient(180deg,rgba(7,8,11,0.97) 0%,rgba(7,8,11,0.86) 70%,transparent 100%)}
+    .brand-logo{background:#171a22;border:1px solid rgba(255,255,255,0.12);box-shadow:none;color:#ff8abf}
+    .brand-logo::after{background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,0.08),transparent 62%)}
+    .brand-name{background:none;-webkit-text-fill-color:#fff7fb;color:#fff7fb;letter-spacing:.01em}
+    .hero-wrap,.hero-static,.anime-card,.cw-card,.panel,.p-info,.video-container{border-radius:10px}
+    .hero-ey,.det-kick.dub,.desc-tog,.anil-tab.active{color:#ff8abf}
+    .hero-ey::before{background:#ff8abf;box-shadow:0 0 8px #ff8abf}
+    .card-badge.dub{background:rgba(255,79,163,0.92)}
+    .card-badge.leg{background:rgba(20,184,166,0.9)}
+    .card-etag,.hero-dot.on,.sec-accent{background:var(--brand)}
+    .btn-p,.ep-btn.active,.q-btn.active,.pg.act,.cw-prog-f{background:var(--brand);box-shadow:0 8px 24px rgba(255,79,163,0.23)}
+    .chip.active{background:rgba(255,79,163,0.12);border-color:rgba(255,122,89,0.38);color:#ffb05d}
+    .gtag{background:rgba(255,79,163,0.08);border-color:rgba(255,122,89,0.18);color:#ffb05d}
+    .p-note{background:rgba(20,184,166,0.07);border-color:rgba(45,212,191,0.16)}
+    .srch-bar:focus-within{border-color:rgba(255,122,89,0.55);box-shadow:0 0 0 3px rgba(255,122,89,0.09),var(--md)}
   </style>
 </head>
 <body>
@@ -377,9 +413,9 @@
     <div class="tb-inner">
       <div class="brand">
         <button class="ib" id="backBtn" aria-label="Voltar">←</button>
-        <div class="brand-logo">B</div>
+        <div class="brand-logo">寿</div>
         <div>
-          <div class="brand-name">BALTIGO</div>
+          <div class="brand-name">Sushi Baltigo</div>
           <div class="brand-sub" id="hSub">Carregando...</div>
         </div>
       </div>
@@ -403,19 +439,19 @@
         </div>
       </div>
       <div class="chips" id="filterChips">
-        <button class="chip" data-section="recentes">🕐 Recentes</button>
-        <button class="chip" data-section="em_lancamento">🚀 Lançamentos</button>
-        <button class="chip" data-section="top">🏆 Top</button>
-        <button class="chip" data-section="dublados">🎙️ Dublados</button>
-        <button class="chip" data-section="legendados">📝 Legendados</button>
-        <button class="chip" data-section="acao">⚔️ Ação</button>
-        <button class="chip" data-section="aventura">🌍 Aventura</button>
-        <button class="chip" data-section="fantasia">✨ Fantasia</button>
-        <button class="chip" data-section="romance">💕 Romance</button>
-        <button class="chip" data-section="comedia">😄 Comédia</button>
-        <button class="chip" data-section="drama">🎭 Drama</button>
-        <button class="chip" data-section="suspense">🔪 Suspense</button>
-        <button class="chip" data-section="sobrenatural">👁️ Sobrenatural</button>
+        <button class="chip" data-section="recentes">Novos episódios</button>
+        <button class="chip" data-section="em_lancamento">Animes recentes</button>
+        <button class="chip" data-section="top">Em alta</button>
+        <button class="chip" data-section="dublados">Dublados</button>
+        <button class="chip" data-section="legendados">Legendados</button>
+        <button class="chip" data-section="acao">Ação</button>
+        <button class="chip" data-section="aventura">Aventura</button>
+        <button class="chip" data-section="fantasia">Fantasia</button>
+        <button class="chip" data-section="romance">Romance</button>
+        <button class="chip" data-section="comedia">Comédia</button>
+        <button class="chip" data-section="drama">Drama</button>
+        <button class="chip" data-section="suspense">Suspense</button>
+        <button class="chip" data-section="sobrenatural">Sobrenatural</button>
       </div>
     </div>
     <div id="homeSections"></div>
@@ -558,7 +594,7 @@
 
 <script>
 const tg = window.Telegram?.WebApp || null;
-if (tg) { try { tg.ready(); tg.expand(); tg.setHeaderColor?.("#03040b"); tg.setBackgroundColor?.("#03040b"); } catch(e){} }
+if (tg) { try { tg.ready(); tg.expand(); tg.setHeaderColor?.("#08090d"); tg.setBackgroundColor?.("#08090d"); } catch(e){} }
 const IS_TG = !!window.Telegram?.WebApp;
 const API = window.location.origin;
 const STALL_MS = 13000, LINK_TO = 10000, MAX_ATT = 4, API_TO = 25000;
@@ -634,7 +670,7 @@ const E = {
 function esc(v) { return String(v ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;"); }
 function nq(v) { const q = String(v || "HD").trim().toUpperCase(); if (["FULLHD","FHD","1080P","HD","720P"].includes(q)) return "HD"; if (["SD","480P","360P"].includes(q)) return "SD"; return q || "HD"; }
 function oppQ(q) { return nq(q) === "HD" ? "SD" : "HD"; }
-function imgSrc(s, t) { return (s && s.startsWith("http")) ? s : `https://placehold.co/600x900/0c0f24/6d28d9?text=${encodeURIComponent(t || "Anime")}`; }
+function imgSrc(s, t) { return (s && s.startsWith("http")) ? s : `https://placehold.co/600x900/10131a/ff8abf?text=${encodeURIComponent(t || "Sushi")}`; }
 
 let toastT = null;
 function toast(m) {
@@ -652,7 +688,7 @@ function showLoad(t = "Carregando...", x = "Aguarde.") {
   S.loadThreshTimer = setTimeout(() => E.loadOv.classList.add("on"), 400);
 }
 function hideLoad() { clearTimeout(S.loadThreshTimer); E.loadOv.classList.remove("on"); }
-function setSub(t) { E.hSub.textContent = t || "BALTIGO"; }
+function setSub(t) { E.hSub.textContent = t || "Sushi Animes"; }
 
 // ── Cinema mode ───────────────────────────────────────────────────────────────
 function enterCinema() { if (S.cinemaOn) return; S.cinemaOn = true; E.topbar.classList.add("cinema"); E.playerPage.classList.add("cexp"); }
@@ -678,8 +714,8 @@ function setPage(page, push = true) {
     setTimeout(() => nEl.classList.remove("page-enter"), 350);
   }
   S.page = page;
-  const titles = { home: "Início", results: "Resultados", anime: S.anime?.title || "Anime", player: "Player" };
-  setSub(titles[page] || "BALTIGO");
+  const titles = { home: "Sushi Animes", results: "Resultados", anime: S.anime?.title || "Anime", player: "Player" };
+  setSub(titles[page] || "Sushi Animes");
   if (push && prev !== page) S.hist.push(prev);
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -1068,11 +1104,32 @@ function pickVidUrl(item) {
 }
 
 function getEpTotal(eps = []) {
-  const nums = (Array.isArray(eps) ? eps : []).map(parseEpN).filter(n => typeof n === "number" && !isNaN(n));
+  const nums = (Array.isArray(eps) ? eps : []).map(epOrdinal).filter(n => typeof n === "number" && !isNaN(n));
   const maxL = nums.length ? Math.max(...nums) : 0;
   return Math.max(maxL, parseInt(S.anime?.episodes) || 0, parseInt(S.epItem?.total_episodes) || 0, parseInt(S.ep) || 0, Array.isArray(eps) ? eps.length : 0);
 }
-function parseEpN(ep) { const raw = ep.number ?? ep.episode ?? ep.ep ?? ep.slug ?? ep.num ?? ""; const n = parseFloat(String(raw).replace(",", ".")); return isNaN(n) ? null : n; }
+function epRaw(ep) { return String(ep?.number ?? ep?.episode ?? ep?.ep ?? ep?.slug ?? ep?.num ?? "").trim(); }
+function parseEpN(ep) {
+  const raw = epRaw(ep);
+  const sx = raw.match(/^[sS]?(\d+)[eE:.-](\d+)$/);
+  if (sx) return Number(sx[1]) * 10000 + Number(sx[2]);
+  const n = parseFloat(raw.replace(",", "."));
+  return isNaN(n) ? null : n;
+}
+function epOrdinal(ep) {
+  const raw = epRaw(ep);
+  const sx = raw.match(/^[sS]?(\d+)[eE:.-](\d+)$/);
+  if (sx) return Number(sx[2]);
+  const n = parseFloat(raw.replace(",", "."));
+  return isNaN(n) ? null : n;
+}
+function epOpenValue(ep) { return epRaw(ep) || String(epOrdinal(ep) ?? ""); }
+function epLabel(ep) {
+  const raw = epRaw(ep);
+  const sx = raw.match(/^[sS]?(\d+)[eE:.-](\d+)$/);
+  if (sx) return Number(sx[1]) > 1 ? `T${sx[1]} EP ${sx[2]}` : sx[2];
+  return raw || String(epOrdinal(ep) ?? "");
+}
 function sortEps(eps) {
   return [...eps].sort((a, b) => {
     const na = parseEpN(a), nb = parseEpN(b);
@@ -1100,7 +1157,7 @@ function buildFullEpList(eps, total) {
 function getFirstEp(eps) {
   if (!Array.isArray(eps) || !eps.length) return "";
   const s = sortEps(eps);
-  for (const e of s) { const n = String(parseEpN(e) ?? e.slug ?? "").trim(); if (n) return n; }
+  for (const e of s) { const n = epOpenValue(e); if (n) return n; }
   return "";
 }
 function sanitizeTitle(t) {
@@ -1127,7 +1184,7 @@ function buildCard(item) {
       <div class="card-badge ${dub ? "dub" : "leg"}">${dub ? "DUB" : "LEG"}</div>
       ${wb}${ep}
       <div class="card-pov"><div class="play-ring">▶</div></div>
-      <img src="${cover}" alt="${esc(item.title || "Anime")}" loading="lazy" onerror="this.src='https://placehold.co/300x450/0c0f24/6d28d9?text=Sem+Capa'" />
+      <img src="${cover}" alt="${esc(item.title || "Anime")}" loading="lazy" onerror="this.src='https://placehold.co/300x450/10131a/ff8abf?text=Sem+Capa'" />
     </div>
     <div class="card-body">
       <div class="card-title">${esc(item.title || "Sem título")}</div>
@@ -1175,8 +1232,8 @@ function renderEpBtns(eps) {
   const disp = Math.max(eps?.length || 0, mt, fl.length, parseInt(S.ep) || 0);
   E.epInfo.textContent = `${disp} episódio(s)`;
   E.epGrid.innerHTML = fl.map(ep => {
-    const num = String(parseEpN(ep) ?? ep.slug ?? "").trim();
-    const lbl = num || (ep.title || "—");
+    const num = epOpenValue(ep);
+    const lbl = epLabel(ep) || (ep.title || "—");
     const act = String(S.ep) === String(num);
     const aw = getAW(S.animeId);
     const wat = aw && String(aw.episode) === String(num);
@@ -1269,12 +1326,12 @@ function renderHero(idx) {
       <div class="hero-bg-b" id="heroBgB" style="opacity:0"></div>
       <div class="hero-grad"></div>
       <div class="hero-body" id="heroBody">
-        <div class="hero-ey">Em Destaque</div>
+        <div class="hero-ey">Em alta no Sushi</div>
         <div class="hero-t" id="heroTitle">${esc(item.title || "Anime")}</div>
         <div class="hero-pills" id="heroPills">${pills}</div>
         <p class="hero-d" id="heroDesc">${esc(item.description || "")}</p>
         <div class="hero-acts">
-          <button class="btn btn-p" id="heroWatchBtn">▶ Assistir Episódio 1</button>
+          <button class="btn btn-p" id="heroWatchBtn">▶ Assistir agora</button>
           <button class="btn btn-ghost" id="heroMoreBtn">+ Detalhes</button>
         </div>
       </div>
@@ -1309,12 +1366,12 @@ function renderHero(idx) {
 function startHeroTimer() { clearTimeout(S.heroTimer); S.heroTimer = setTimeout(() => { renderHero((S.heroIdx + 1) % S.heroBanners.length); startHeroTimer(); }, 6000); }
 function renderStaticHero() {
   E.heroArea.innerHTML = `<div class="hero-static"><div class="hs-inner"><div>
-    <div class="hero-ey">Anime Streaming</div>
+    <div class="hero-ey">Sushi Animes</div>
     <h1 style="font-family:var(--fd);font-size:clamp(24px,4vw,46px);font-weight:900;line-height:1.05;letter-spacing:-.03em;margin-bottom:10px">
-      Assista seus<br><span style="background:var(--brand2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">animes favoritos</span></h1>
-    <p style="color:var(--text2);font-size:13px;line-height:1.7;max-width:460px">Pesquise, explore e assista direto no Telegram.</p>
+      Animes dublados<br><span style="background:var(--brand2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">e legendados</span></h1>
+    <p style="color:var(--text2);font-size:13px;line-height:1.7;max-width:460px">Explore lançamentos, continue episódios e assista em HD/FULLHD direto no Telegram.</p>
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:18px">
-      <button class="btn btn-p" id="heroExpBtn">▶ Explorar catálogo</button>
+      <button class="btn btn-p" id="heroExpBtn">▶ Novos episódios</button>
       <button class="btn btn-ghost" id="heroSrchBtn">🔎 Buscar anime</button>
     </div></div>
     <div class="hero-art"><div class="hero-art-inner">⛩️</div></div>
@@ -1389,7 +1446,7 @@ async function loadHome() {
   try {
     const data = await apiGet("/api/catalog/home");
     S.home = data;
-    setSub("Anime Streaming");
+    setSub("Dublados e legendados");
     const secs = data?.sections || [];
     if (!secs.length) {
       E.homeSections.innerHTML = `<div class="sbox"><div class="sbox-icon">📭</div><div class="sbox-title">Nada aqui</div><div class="sbox-text">Nenhuma seção encontrada.</div></div>`;
