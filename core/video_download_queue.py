@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import os
 import re
 import shutil
 import time
@@ -37,6 +38,8 @@ HEADERS = {
     "Referer": "https://animefire.io/",
     "Origin": "https://animefire.io",
 }
+
+FORCE_IPV4 = os.getenv("HTTP_FORCE_IPV4", "1").strip() != "0"
 
 CHUNK_SIZE = 4 * 1024 * 1024
 PROGRESS_INTERVAL = 3.0
@@ -224,7 +227,10 @@ async def _download_file(job: VideoDownloadJob, entry: dict) -> Path:
         return await _download_hls(job, entry, target, temp)
 
     timeout = httpx.Timeout(connect=10.0, read=60.0, write=60.0, pool=10.0)
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=HEADERS) as client:
+    transport = None
+    if FORCE_IPV4:
+        transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True, headers=HEADERS, transport=transport) as client:
         async with client.stream("GET", job.video_url) as response:
             response.raise_for_status()
             total = int(response.headers.get("content-length") or 0) or None
