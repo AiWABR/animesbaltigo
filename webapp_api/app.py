@@ -19,7 +19,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from config import ADMIN_IDS, BOT_USERNAME, CAKTO_WEBHOOK_SECRET, STICKER_DIVISOR, UPSTREAM_PROXY_URL
+from config import ADMIN_IDS, ANIME_SOURCE, BOT_USERNAME, CAKTO_WEBHOOK_SECRET, SOURCE_SITE_BASE, STICKER_DIVISOR, UPSTREAM_PROXY_URL
 from core.http_client import get_http_client
 from services.animefire_client import (
     get_anime_details,
@@ -51,7 +51,7 @@ from services.affiliate_db import (
     update_setting,
 )
 
-BASE_URL = "https://animefire.io"
+BASE_URL = SOURCE_SITE_BASE or "https://sushianimes.com.br"
 
 HEADERS = {
     "User-Agent": (
@@ -371,6 +371,8 @@ def _section_conf(section: str) -> dict[str, str] | None:
 
 
 def _section_url(slug: str, page: int) -> str:
+    if ANIME_SOURCE == "sushi" or "sushianimes" in BASE_URL.lower():
+        return BASE_URL
     if page <= 1:
         return f"{BASE_URL}/{slug}"
     return f"{BASE_URL}/{slug}/{page}"
@@ -424,11 +426,20 @@ async def _get(url: str) -> str:
 
 def _extract_slug_from_href(href: str) -> str:
     href = (href or "").strip()
+    if ANIME_SOURCE == "sushi" or "sushianimes" in BASE_URL.lower():
+        match = re.search(r"/anime/([^/?#]+?)(?:/)?(?:\?.*)?$", href)
+        if not match:
+            return ""
+        slug = match.group(1).strip()
+        ep_match = re.search(r"^(.+)-\d+-season-\d+-episode$", slug)
+        return ep_match.group(1) if ep_match else slug
     match = re.search(r"/animes/([^/?#]+?)(?:/)?(?:\?.*)?$", href)
     return match.group(1).strip() if match else ""
 
 
 def _extract_last_page(page_html: str, slug: str) -> int:
+    if ANIME_SOURCE == "sushi" or "sushianimes" in BASE_URL.lower():
+        return 1
     soup = BeautifulSoup(page_html, "html.parser")
     max_page = 1
     for anchor in soup.select("a[href]"):
@@ -443,7 +454,8 @@ def _extract_last_page(page_html: str, slug: str) -> int:
 def _extract_listing_cards(page_html: str) -> list[dict]:
     soup = BeautifulSoup(page_html, "html.parser")
     found: dict[str, dict] = {}
-    for anchor in soup.select("a[href*='/animes/']"):
+    selector = "a[href*='/anime/']" if (ANIME_SOURCE == "sushi" or "sushianimes" in BASE_URL.lower()) else "a[href*='/animes/']"
+    for anchor in soup.select(selector):
         href = (anchor.get("href") or "").strip()
         anime_id = _extract_slug_from_href(href)
         if not anime_id:
