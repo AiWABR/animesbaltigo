@@ -2169,6 +2169,11 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     selected_quality = _get_selected_quality(context, anime_id, episode)
                     player = await _get_cached_player(anime_id, episode, selected_quality)
                     video_url = (player.get("video") or "").strip()
+                    video_candidates = []
+                    for label, url in (player.get("videos") or {}).items():
+                        candidate_url = str(url or "").strip()
+                        if candidate_url:
+                            video_candidates.append({"label": _normalize_quality(label), "url": candidate_url})
                     resolved_quality = _normalize_quality(player.get("quality", selected_quality))
                     title = _format_title_with_version(
                         _pick_display_title(anime, anime.get("title") or "Sem t\u00edtulo"),
@@ -2207,6 +2212,7 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 title=title,
                                 video_url=video_url,
                                 caption=caption,
+                                video_urls=video_candidates,
                             ),
                         )
                     except RuntimeError as error:
