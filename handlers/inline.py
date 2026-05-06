@@ -111,7 +111,9 @@ def _translate_genre(genre: str) -> str:
 
 def _translate_status(status: str) -> str:
     status = (status or "").strip()
-    return STATUS_PT_MAP.get(status, status or "N/A")
+    if not status or status.upper() in {"N/A", "NA", "NONE", "NULL", "-"}:
+        return ""
+    return STATUS_PT_MAP.get(status, status)
 
 
 def _translate_rating(anime: dict) -> str:
@@ -123,21 +125,23 @@ def _translate_rating(anime: dict) -> str:
         or ""
     )
     raw = str(raw or "").strip().upper()
-    return RATING_MAP.get(raw, raw or "N/A")
+    return RATING_MAP.get(raw, raw or "")
 
 
 def _format_hashtag_genres(genres: list[str]) -> str:
     if not genres:
-        return "N/A"
+        return ""
 
     translated = []
-    for genre in genres[:4]:
+    for genre in genres:
         value = _translate_genre(str(genre)).strip()
-        if value:
+        if value and value.lower() not in {"legendado", "dublado", "animes legendados", "animes dublados", "animeplay"}:
             translated.append(f"#{value}")
+        if len(translated) >= 4:
+            break
 
     if not translated:
-        return "N/A"
+        return ""
 
     if len(translated) <= 2:
         return ", ".join(translated)
@@ -211,7 +215,7 @@ def _extract_studio(anime: dict) -> str:
 
     if isinstance(candidates, str):
         value = candidates.strip()
-        return value or "N/A"
+        return "" if value.lower() in {"animeplay", "n/a", "na", "-"} else value
 
     if isinstance(candidates, list):
         names = []
@@ -228,9 +232,10 @@ def _extract_studio(anime: dict) -> str:
             name = name.strip()
             if name and name not in names:
                 names.append(name)
-        return ", ".join(names[:2]) if names else "N/A"
+        names = [name for name in names if name.lower() not in {"animeplay", "n/a", "na", "-"}]
+        return ", ".join(names[:2]) if names else ""
 
-    return "N/A"
+    return ""
 
 
 def _extract_type(anime: dict, item: dict, is_dubbed: bool) -> str:
@@ -347,9 +352,9 @@ def _inline_message_text(anime: dict, fallback_title: str) -> str:
     genres = anime.get("genres") or []
     genres_text = _format_hashtag_genres(genres)
 
-    year = anime.get("season_year") or anime.get("year") or "N/A"
+    year = anime.get("season_year") or anime.get("year") or ""
     status = _translate_status(str(anime.get("status") or ""))
-    episodes = anime.get("episodes") or "N/A"
+    episodes = anime.get("episodes") or ""
     rating = _translate_rating(anime)
     studio = _extract_studio(anime)
 
@@ -371,6 +376,21 @@ def _inline_message_text(anime: dict, fallback_title: str) -> str:
 
     if image_url:
         text += f'<a href="{html.escape(image_url, quote=True)}">\u200b</a>'
+
+    for bad in (
+        "<b>GÃªnero:</b> <i></i>\n",
+        "<b>Ano:</b> <i></i>\n",
+        "<b>Status:</b> <i></i>\n",
+        "<b>Total EpisÃ³dios:</b> <i></i>\n",
+        "<b>Studio:</b> <i></i>\n",
+        "<b>ClassificaÃ§Ã£o:</b> <i></i>\n",
+        "<b>GÃªnero:</b> <i>N/A</i>\n",
+        "<b>Status:</b> <i>N/A</i>\n",
+        "<b>Total EpisÃ³dios:</b> <i>N/A</i>\n",
+        "<b>Studio:</b> <i>N/A</i>\n",
+        "<b>ClassificaÃ§Ã£o:</b> <i>N/A</i>\n",
+    ):
+        text = text.replace(bad, "")
 
     return text
 
