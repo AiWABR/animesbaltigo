@@ -533,8 +533,10 @@ def _parse_genres(soup: BeautifulSoup) -> list[str]:
     seen = set()
     skipped = {
         "animes legendados",
+        "legendado",
         "animes dublado",
         "animes dublados",
+        "dublado",
         "manhwa",
         "donghua",
         "tokusatsus",
@@ -555,10 +557,11 @@ def _parse_genres(soup: BeautifulSoup) -> list[str]:
 
 def _parse_episodes_from_detail(soup: BeautifulSoup, anime_id: str) -> list[dict]:
     by_episode = {}
+    episode_slug_prefix = re.sub(r"-todos-os-episodios$", "", anime_id, flags=re.I)
     for anchor in soup.select("a[href*='/episodio/']"):
         href = urljoin(BASE_URL, anchor.get("href") or "")
         slug = _slug_from_url(href)
-        if anime_id not in slug:
+        if anime_id not in slug and episode_slug_prefix not in slug:
             continue
         li = anchor.find_parent("li")
         season = 1
