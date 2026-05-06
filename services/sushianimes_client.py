@@ -16,11 +16,13 @@ _SEARCH_CACHE = {}
 _DETAILS_CACHE = {}
 _EPISODES_CACHE = {}
 _PLAYER_CACHE = {}
+_ANILIST_CACHE = {}
 
 _SEARCH_CACHE_TTL = 1800
 _DETAILS_CACHE_TTL = 21600
 _EPISODES_CACHE_TTL = 600
 _PLAYER_CACHE_TTL = 21600
+_ANILIST_CACHE_TTL = 86400
 
 _HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0",
@@ -260,6 +262,116 @@ def _parse_genres(soup: BeautifulSoup) -> list[str]:
     return genres
 
 
+_ANILIST_QUERY = """
+query ($search: String) {
+  Page(perPage: 1) {
+    media(search: $search, type: ANIME, sort: SEARCH_MATCH) {
+      id
+      siteUrl
+      title { romaji english native }
+      status
+      averageScore
+      episodes
+      duration
+      season
+      seasonYear
+      genres
+      description(asHtml: false)
+      coverImage { extraLarge large color }
+      bannerImage
+      studios(isMain: true) { nodes { name } }
+    }
+  }
+}
+"""
+
+_ANILIST_STATUS_PT = {
+    "FINISHED": "Completo",
+    "RELEASING": "Em lançamento",
+    "NOT_YET_RELEASED": "Em breve",
+    "CANCELLED": "Cancelado",
+    "HIATUS": "Em hiato",
+}
+
+_ANILIST_SEASON_PT = {
+    "WINTER": "inverno",
+    "SPRING": "primavera",
+    "SUMMER": "verão",
+    "FALL": "outono",
+}
+
+
+def _anilist_search_title(title: str, anime_id: str) -> str:
+    value = _clean(title or anime_id.replace("-", " "))
+    value = re.sub(r"\s*\((?:dublado|legendado)\)\s*", " ", value, flags=re.I)
+    value = re.sub(r"\b(?:dublado|legendado|fullhd|hd)\b", " ", value, flags=re.I)
+    value = re.sub(r"\s+", " ", value).strip()
+    return value or anime_id.replace("-", " ").title()
+
+
+def _strip_html(value: str) -> str:
+    value = html.unescape(str(value or ""))
+    value = re.sub(r"<br\s*/?>", " ", value, flags=re.I)
+    value = re.sub(r"<[^>]+>", "", value)
+    return _clean(value)
+
+
+def _format_anilist(media: dict) -> dict:
+    title = media.get("title") or {}
+    studios = (((media.get("studios") or {}).get("nodes")) or [])
+    cover = media.get("coverImage") or {}
+    score = media.get("averageScore")
+    return {
+        "anilist_id": media.get("id"),
+        "anilist_url": media.get("siteUrl") or "",
+        "anilist_title": title.get("romaji") or title.get("english") or title.get("native") or "",
+        "alt_titles": [value for value in (title.get("english"), title.get("romaji"), title.get("native")) if value],
+        "description": _strip_html(media.get("description") or ""),
+        "genres": media.get("genres") or [],
+        "score": f"{score / 10:.1f}/10" if isinstance(score, (int, float)) else "",
+        "status": _ANILIST_STATUS_PT.get(media.get("status") or "", media.get("status") or ""),
+        "episodes": media.get("episodes"),
+        "season": _ANILIST_SEASON_PT.get(media.get("season") or "", (media.get("season") or "").lower()),
+        "season_year": media.get("seasonYear"),
+        "duration": f"{media.get('duration')} min" if media.get("duration") else "",
+        "studio": ", ".join(_clean(studio.get("name")) for studio in studios if studio.get("name")),
+        "cover_url": cover.get("extraLarge") or cover.get("large") or "",
+        "banner_url": media.get("bannerImage") or "",
+    }
+
+
+async def _fetch_anilist_details(title: str, anime_id: str) -> dict:
+    search = _anilist_search_title(title, anime_id)
+    cache_key = search.lower()
+    cached = _cache_get(_ANILIST_CACHE, cache_key, _ANILIST_CACHE_TTL)
+    if cached is not None:
+        return cached
+
+    client = await get_http_client()
+    try:
+        async with HTTP_SEMAPHORE:
+            response = await client.post(
+                "https://graphql.anilist.co",
+                json={"query": _ANILIST_QUERY, "variables": {"search": search}},
+                headers={
+                    "User-Agent": _HTTP_HEADERS["User-Agent"],
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                timeout=8,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        media = (((payload.get("data") or {}).get("Page") or {}).get("media") or [])
+        data = _format_anilist(media[0]) if media else {}
+    except Exception as error:
+        print(f"[Sushi AniList] erro buscando {search!r}: {error!r}")
+        data = {}
+
+    _cache_set(_ANILIST_CACHE, cache_key, data)
+    return data
+
+
 def _parse_episodes_from_detail(soup: BeautifulSoup, anime_id: str) -> list[dict]:
     by_key = {}
     for anchor in soup.select("a[href*='-season-'][href*='-episode']"):
@@ -337,24 +449,36 @@ async def get_anime_details(anime_id: str):
     if match:
         season_name = match.group(1).strip().lower()
 
+    anilist = await _fetch_anilist_details(title, anime_id)
+    anilist_alt_titles = []
+    for alt in anilist.get("alt_titles") or []:
+        alt = _clean(alt)
+        if alt and alt.lower() != title.lower() and alt not in anilist_alt_titles:
+            anilist_alt_titles.append(alt)
+
     data = {
         "id": anime_id,
         "title": title,
         "raw_title": title,
-        "alt_titles": [],
-        "description": description,
+        "alt_titles": anilist_alt_titles,
+        "description": anilist.get("description") or description,
         "url": url,
-        "cover_url": cover,
-        "banner_url": cover,
-        "media_image_url": cover,
-        "score": score,
-        "status": status or "N/A",
+        "cover_url": anilist.get("cover_url") or cover,
+        "banner_url": anilist.get("banner_url") or anilist.get("cover_url") or cover,
+        "media_image_url": anilist.get("cover_url") or cover,
+        "score": anilist.get("score") or score,
+        "status": anilist.get("status") or status or "N/A",
         "format": "TV",
         "episodes": len(episodes_payload) or None,
-        "season": season_name,
-        "season_year": year,
-        "genres": _parse_genres(soup),
-        "studio": "SushiAnimes",
+        "anilist_episodes": anilist.get("episodes"),
+        "season": anilist.get("season") or season_name,
+        "season_year": anilist.get("season_year") or year,
+        "duration": anilist.get("duration") or "24 min",
+        "genres": anilist.get("genres") or _parse_genres(soup),
+        "studio": anilist.get("studio") or "SushiAnimes",
+        "anilist_url": anilist.get("anilist_url") or "",
+        "anilist_id": anilist.get("anilist_id"),
+        "anilist_title": anilist.get("anilist_title") or "",
         "source": "sushianimes",
         "seasons": seasons,
     }
