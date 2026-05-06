@@ -450,7 +450,14 @@ def _title_from_slug(slug: str) -> str:
 
 def _extract_last_page(page_html: str, slug: str) -> int:
     if _is_sushi_source():
-        return 1
+        soup = BeautifulSoup(page_html, "html.parser")
+        max_page = 1
+        for anchor in soup.select("a[href*='?page=']"):
+            href = anchor.get("href") or ""
+            match = re.search(r"[?&]page=(\d+)", href)
+            if match:
+                max_page = max(max_page, int(match.group(1)))
+        return max_page
     soup = BeautifulSoup(page_html, "html.parser")
     max_page = 1
     for anchor in soup.select("a[href]"):
@@ -482,18 +489,29 @@ def _extract_listing_cards(page_html: str) -> list[dict]:
         if img:
             cover = img.get("data-src") or img.get("src") or ""
             title = title or _clean(img.get("alt") or "")
+        if not cover:
+            media = anchor.select_one("[data-src], [data-bg]")
+            if media:
+                cover = media.get("data-src") or media.get("data-bg") or ""
+        if not cover:
+            media = anchor.select_one("[style*='background-image']")
+            if media:
+                match = re.search(r"url\((['\"]?)(.*?)\1\)", media.get("style") or "", re.I)
+                if match:
+                    cover = match.group(2)
 
         title = title or _title_from_slug(anime_id)
         dubbed = _is_dubbed(anime_id, title)
 
+        previous = found.get(anime_id) or {}
         found[anime_id] = {
             "id": anime_id,
-            "title": title,
+            "title": title if title != _title_from_slug(anime_id) else (previous.get("title") or title),
             "display_title": f"[{'DUB' if dubbed else 'LEG'}] {title}",
             "prefix": "DUB" if dubbed else "LEG",
             "is_dubbed": dubbed,
-            "cover_url": cover,
-            "banner_url": cover,
+            "cover_url": cover or previous.get("cover_url") or "",
+            "banner_url": cover or previous.get("banner_url") or "",
             "description": "",
             "genres": [],
             "score": None,
@@ -893,8 +911,21 @@ async def _get_paginated_section_page(section: str, page: int) -> dict:
 
     if _is_sushi_source():
         async def sushi_factory():
-            page_html = await _get(BASE_URL)
-            raw_items = _extract_listing_cards(page_html)
+            first_html = await _get(f"{BASE_URL}/animes?page=1")
+            source_total_pages = _extract_last_page(first_html, "animes")
+            pages_to_fetch = max(1, min(source_total_pages, 12))
+            html_pages = [first_html]
+            if pages_to_fetch > 1:
+                fetched = await asyncio.gather(
+                    *[_get(f"{BASE_URL}/animes?page={page_num}") for page_num in range(2, pages_to_fetch + 1)],
+                    return_exceptions=True,
+                )
+                html_pages.extend([html for html in fetched if isinstance(html, str)])
+
+            raw_items = []
+            for html_doc in html_pages:
+                raw_items.extend(_extract_listing_cards(html_doc))
+
             items = await _enrich_sushi_home_cards(raw_items, section)
 
             if section == "em_lancamento":
@@ -923,7 +954,7 @@ async def _get_paginated_section_page(section: str, page: int) -> dict:
                 "items": items[start:end],
             }
 
-        return await _cached(f"sushi-page:{section}:{page}", SECTION_TTL, sushi_factory)
+        return await _cached(f"sushi-page:v2:{section}:{page}", SECTION_TTL, sushi_factory)
 
     async def meta_factory():
         first_html = await _get(_section_url(slug, 1))
