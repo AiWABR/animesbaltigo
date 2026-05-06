@@ -19,11 +19,12 @@ _EPISODES_CACHE = {}
 _PLAYER_CACHE = {}
 _ANILIST_CACHE = {}
 _ANILIST_DISABLED_UNTIL = 0.0
+_PLAYER_LOCKS = {}
 
 _SEARCH_CACHE_TTL = 1800
 _DETAILS_CACHE_TTL = 21600
 _EPISODES_CACHE_TTL = 600
-_PLAYER_CACHE_TTL = 21600
+_PLAYER_CACHE_TTL = 180
 _ANILIST_CACHE_TTL = 86400
 
 _HTTP_HEADERS = {
@@ -445,11 +446,19 @@ def _extract_anime_cards(html_doc: str, query: str = "") -> list[dict]:
         if not anime_id:
             continue
 
+        container = anchor.find_parent(["article", "li", "div"])
         title = _clean(anchor.get_text(" ", strip=True))
-        img = anchor.find("img") or (anchor.parent.find("img") if anchor.parent else None)
+        img = anchor.find("img") or (container.find("img") if container else None)
         cover_url = _media_url_from_node(anchor)
         if img:
             title = title or _clean(img.get("alt"))
+        if not title or re.fullmatch(r"(?:TV|OVA|ONA|Filme|Movie|Anime)", title, re.I):
+            if img and _clean(img.get("alt")):
+                title = _clean(img.get("alt"))
+            elif container:
+                title_node = container.select_one(".data h3 a, .data h3, .data h2, h3, h2")
+                if title_node:
+                    title = _clean(title_node.get_text(" ", strip=True))
 
         title = re.sub(r"\b(?:TV|OVA|ONA|Filme)\b\s*$", "", title, flags=re.I).strip()
         title = title or anime_id.replace("-", " ").title()
@@ -549,21 +558,30 @@ def _parse_episodes_from_detail(soup: BeautifulSoup, anime_id: str) -> list[dict
     for anchor in soup.select("a[href*='/episodio/']"):
         href = urljoin(BASE_URL, anchor.get("href") or "")
         slug = _slug_from_url(href)
-        match = re.search(r"^(.+)-episodio-(\d+)$", slug, re.I)
-        if not match:
+        if anime_id not in slug:
             continue
-        base_slug = match.group(1)
-        if base_slug != anime_id:
-            continue
-        episode = int(match.group(2))
+        li = anchor.find_parent("li")
+        season = 1
+        episode = None
+        numerando = _clean(li.select_one(".numerando").get_text(" ", strip=True) if li and li.select_one(".numerando") else "")
+        match = re.search(r"^\s*(\d+)\s*-\s*(\d+(?:[.,]\d+)?)", numerando)
+        if match:
+            season = int(match.group(1))
+            episode = int(float(match.group(2).replace(",", ".")))
+        else:
+            match = re.search(r"^(.+)-episodio-(\d+)$", slug, re.I)
+            if not match:
+                continue
+            episode = int(match.group(2))
         title = _clean(anchor.get_text(" ", strip=True))
         title = re.sub(r"^Epis[oó]dio\s*\d+\s*-\s*", "", title, flags=re.I).strip()
         thumb = _media_url_from_node(anchor)
-        by_episode[episode] = {
-            "episode": _episode_key(1, episode),
+        key = f"{season}:{episode}:{href}"
+        by_episode[key] = {
+            "episode": _episode_key(season, episode),
             "number": str(episode),
             "episode_number": episode,
-            "season": 1,
+            "season": season,
             "title": title,
             "thumb": thumb,
             "image": thumb,
@@ -571,7 +589,7 @@ def _parse_episodes_from_detail(soup: BeautifulSoup, anime_id: str) -> list[dict
             "base_slug": anime_id,
             "label": str(episode),
         }
-    return [by_episode[key] for key in sorted(by_episode)]
+    return sorted(by_episode.values(), key=lambda item: (int(item.get("season") or 1), int(item.get("episode_number") or 0), item.get("url") or ""))
 
 
 async def get_anime_details(anime_id: str):
@@ -628,7 +646,7 @@ async def get_anime_details(anime_id: str):
         "genres": _parse_genres(soup),
         "studio": "AnimePlay",
         "source": "animeplay",
-        "seasons": [1],
+        "seasons": sorted({int(item.get("season") or 1) for item in episodes}) or [1],
         "is_dubbed": _is_dubbed(title, anime_id),
     }
     anilist_data = await _search_anilist_by_title(title, alt_titles)
@@ -670,7 +688,7 @@ async def get_episodes(anime_id: str, offset: int = 0, limit: int = 3000):
             str(item.get("episode") or ""),
             str(item.get("number") or ""),
             str(item.get("episode_number") or ""),
-            f"1:{item.get('episode_number')}",
+            f"{item.get('season') or 1}:{item.get('episode_number')}",
         }
         for key in keys:
             if key:
@@ -681,7 +699,7 @@ async def get_episodes(anime_id: str, offset: int = 0, limit: int = 3000):
         "total": total,
         "by_episode": by_episode,
         "all_items": items,
-        "seasons": [1],
+        "seasons": sorted({int(item.get("season") or 1) for item in items}) or [1],
     }
 
 
@@ -737,66 +755,68 @@ async def get_episode_player(anime_id: str, episode: str, preferred_quality: str
     anime_id = _normalize_anime_id(anime_id)
     season, episode_number = _parse_episode_ref(episode)
     cache_key = f"{anime_id}|{season}|{episode_number}|{preferred_quality}"
-    cached = _cache_get(_PLAYER_CACHE, cache_key, _PLAYER_CACHE_TTL)
-    if cached is not None:
-        return cached
+    lock = _PLAYER_LOCKS.setdefault(cache_key, asyncio.Lock())
+    async with lock:
+        cached = _cache_get(_PLAYER_CACHE, cache_key, _PLAYER_CACHE_TTL)
+        if cached is not None:
+            return cached
 
-    payload = await get_episodes(anime_id, 0, 3000)
-    items = payload.get("all_items") or []
-    by_episode = payload.get("by_episode") or {}
-    index = by_episode.get(f"{season}:{episode_number}") or by_episode.get(_episode_key(season, episode_number)) or by_episode.get(str(episode_number))
-    if index is None:
-        raise RuntimeError(f"Episodio nao encontrado no AnimePlay: T{season}E{episode_number}")
+        payload = await get_episodes(anime_id, 0, 3000)
+        items = payload.get("all_items") or []
+        by_episode = payload.get("by_episode") or {}
+        index = by_episode.get(f"{season}:{episode_number}") or by_episode.get(_episode_key(season, episode_number)) or by_episode.get(str(episode_number))
+        if index is None:
+            raise RuntimeError(f"Episodio nao encontrado no AnimePlay: T{season}E{episode_number}")
 
-    item = items[index]
-    episode_url = item.get("url")
-    page_html = await _request_text(episode_url, referer=_anime_url(anime_id))
-    soup = BeautifulSoup(page_html, "html.parser")
+        item = items[index]
+        episode_url = item.get("url")
+        page_html = await _request_text(episode_url, referer=_anime_url(anime_id))
+        soup = BeautifulSoup(page_html, "html.parser")
 
-    options = []
-    for li in soup.select(".dooplay_player_option[data-post][data-nume]"):
-        title_node = li.select_one(".title")
-        options.append(
-            {
-                "post": str(li.get("data-post") or ""),
-                "nume": int(li.get("data-nume") or 0),
-                "type": str(li.get("data-type") or "tv"),
-                "label": _clean(title_node.get_text(" ", strip=True) if title_node else ""),
-            }
-        )
+        options = []
+        for li in soup.select(".dooplay_player_option[data-post][data-nume]"):
+            title_node = li.select_one(".title")
+            options.append(
+                {
+                    "post": str(li.get("data-post") or ""),
+                    "nume": int(li.get("data-nume") or 0),
+                    "type": str(li.get("data-type") or "tv"),
+                    "label": _clean(title_node.get_text(" ", strip=True) if title_node else ""),
+                }
+            )
 
-    if not options:
-        raise RuntimeError("Nao encontrei servidores do player no AnimePlay.")
+        if not options:
+            raise RuntimeError("Nao encontrei servidores do player no AnimePlay.")
 
-    post_id = str(options[0].get("post") or "")
-    videos = await _resolve_player_options(post_id, episode_url, options)
-    if not videos:
-        raise RuntimeError("AnimePlay nao retornou MP4/HLS direto para esse episodio.")
+        post_id = str(options[0].get("post") or "")
+        videos = await _resolve_player_options(post_id, episode_url, options)
+        if not videos:
+            raise RuntimeError("AnimePlay nao retornou MP4/HLS direto para esse episodio.")
 
-    preferred = "SD" if str(preferred_quality or "").upper() == "SD" else "HD"
-    selected_quality = preferred if preferred in videos else ("HD" if "HD" in videos else next(iter(videos.keys())))
-    video = videos.get(selected_quality) or ""
+        preferred = "SD" if str(preferred_quality or "").upper() == "SD" else "HD"
+        selected_quality = preferred if preferred in videos else ("HD" if "HD" in videos else next(iter(videos.keys())))
+        video = videos.get(selected_quality) or ""
 
-    prev_episode = str(items[index - 1].get("episode")) if index > 0 else None
-    next_episode = str(items[index + 1].get("episode")) if index + 1 < len(items) else None
-    data = {
-        "video": video,
-        "videos": videos,
-        "base_slug": anime_id,
-        "server": "ANIMEPLAY",
-        "quality": selected_quality,
-        "available_qualities": list(videos.keys()),
-        "prev_episode": prev_episode,
-        "next_episode": next_episode,
-        "total_episodes": len(items),
-        "season": 1,
-        "episode_number": episode_number,
-        "episode_title": item.get("title") or "",
-        "thumb": item.get("thumb") or item.get("image") or "",
-        "image": item.get("image") or item.get("thumb") or "",
-    }
-    _cache_set(_PLAYER_CACHE, cache_key, data)
-    return data
+        prev_episode = str(items[index - 1].get("episode")) if index > 0 else None
+        next_episode = str(items[index + 1].get("episode")) if index + 1 < len(items) else None
+        data = {
+            "video": video,
+            "videos": videos,
+            "base_slug": anime_id,
+            "server": "ANIMEPLAY",
+            "quality": selected_quality,
+            "available_qualities": list(videos.keys()),
+            "prev_episode": prev_episode,
+            "next_episode": next_episode,
+            "total_episodes": len(items),
+            "season": season,
+            "episode_number": episode_number,
+            "episode_title": item.get("title") or "",
+            "thumb": item.get("thumb") or item.get("image") or "",
+            "image": item.get("image") or item.get("thumb") or "",
+        }
+        _cache_set(_PLAYER_CACHE, cache_key, data)
+        return data
 
 
 def invalidate_episode_caches(anime_id: str, episode: str) -> None:
