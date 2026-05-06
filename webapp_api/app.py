@@ -1688,3 +1688,36 @@ async def proxy_stream(
         headers=passthrough,
         media_type=content_type,
     )
+
+
+@app.get("/api/image-proxy")
+async def image_proxy(url: str = Query(..., min_length=1)):
+    if not url.lower().startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="URL de imagem invÃ¡lida")
+
+    client = await get_http_client()
+    try:
+        response = await client.get(
+            url,
+            headers={
+                "User-Agent": HEADERS["User-Agent"],
+                "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+                "Referer": BASE_URL + "/",
+            },
+        )
+        response.raise_for_status()
+    except Exception as exc:
+        print(f"IMAGE PROXY ERROR {url!r}: {exc!r}")
+        raise HTTPException(status_code=502, detail="Erro ao carregar imagem")
+
+    content_type = response.headers.get("content-type", "image/jpeg")
+    if not content_type.lower().startswith("image/"):
+        content_type = "image/jpeg"
+    return Response(
+        content=response.content,
+        media_type=content_type,
+        headers={
+            "Cache-Control": "public, max-age=86400",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
