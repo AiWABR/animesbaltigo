@@ -618,6 +618,59 @@ def _variant_keyboard(
 ) -> InlineKeyboardMarkup:
     rows = []
 
+    seasons = group_item.get("seasons") or []
+    if len(seasons) > 1:
+        for season in seasons:
+            season_number = int(season.get("season") or 1)
+            season_variants = season.get("variants") or []
+            sub_variant = next((v for v in season_variants if not v.get("is_dubbed")), None)
+            dub_variant = next((v for v in season_variants if v.get("is_dubbed")), None)
+
+            if sub_variant and dub_variant:
+                rows.append([
+                    InlineKeyboardButton(
+                        f"T{season_number:02d} 🇯🇵",
+                        web_app=WebAppInfo(url=_build_miniapp_anime_url(sub_variant["id"]))
+                    ),
+                    InlineKeyboardButton(
+                        f"T{season_number:02d} 🇧🇷",
+                        web_app=WebAppInfo(url=_build_miniapp_anime_url(dub_variant["id"]))
+                    ),
+                ])
+            else:
+                variant = sub_variant or dub_variant or (season_variants[0] if season_variants else None)
+                if variant and variant.get("id"):
+                    label = f"📚 Temporada {season_number:02d}"
+                    if variant.get("is_dubbed"):
+                        label += " 🇧🇷"
+                    rows.append([
+                        InlineKeyboardButton(
+                            label,
+                            web_app=WebAppInfo(url=_build_miniapp_anime_url(variant["id"]))
+                        )
+                    ])
+
+        default_id = group_item.get("default_anime_id") or group_item.get("id")
+        if default_id:
+            rows.append([
+                InlineKeyboardButton("\U0001f4e5 Baixar offline", callback_data=f"off|{default_id}")
+            ])
+
+        second_row = []
+        anilist_url = _build_anilist_url(anime, fallback_title, group_item)
+        trailer_url = _build_trailer_url(anime)
+
+        if anilist_url:
+            second_row.append(InlineKeyboardButton("🧾 Sinopse", url=anilist_url))
+
+        if trailer_url:
+            second_row.append(InlineKeyboardButton("🎬 Trailer", url=trailer_url))
+
+        if second_row:
+            rows.append(second_row)
+
+        return InlineKeyboardMarkup(rows)
+
     variants = group_item.get("variants") or []
     sub_variant = next((v for v in variants if not v.get("is_dubbed")), None)
     dub_variant = next((v for v in variants if v.get("is_dubbed")), None)
@@ -747,11 +800,11 @@ async def _resolve_group_from_anime_id(anime_id: str):
 
     for item in results:
         if (item.get("default_anime_id") or item.get("id")) == anime_id:
-            return anime, item
+            return anime, _with_season_groups(item, results)
 
         for variant in (item.get("variants") or []):
             if variant.get("id") == anime_id:
-                return anime, item
+                return anime, _with_season_groups(item, results)
 
     fallback_item = {
         "id": anime_id,
@@ -767,6 +820,104 @@ async def _resolve_group_from_anime_id(anime_id: str):
     }
 
     return anime, fallback_item
+
+
+def _season_number_from_text(value: str) -> int:
+    text = str(value or "").lower()
+    match = re.search(r"\b(?:season|temporada)\s*(\d+)\b", text)
+    if match:
+        return int(match.group(1))
+    match = re.search(r"\b(\d+)(?:st|nd|rd|th)\s*(?:season|temporada)\b", text)
+    if match:
+        return int(match.group(1))
+    match = re.search(r"-(\d+)(?:st|nd|rd|th)?-season\b", text)
+    if match:
+        return int(match.group(1))
+    match = re.search(r"\b(\d+)\s*[:\-–—]?\s*(?:arise|part|cour|final|science|shadow)\b", text)
+    if match:
+        return int(match.group(1))
+    match = re.search(r"-(\d+)$", text)
+    if match:
+        return int(match.group(1))
+    return 1
+
+
+def _season_group_key(value: str) -> str:
+    text = str(value or "").lower()
+    text = re.sub(r"\b(?:dublado|legendado|todos os episodios|todos os episódios|online|hd)\b", " ", text)
+    text = re.sub(r"\b(?:season|temporada)\s*\d+\b", " ", text)
+    text = re.sub(r"\b\d+(?:st|nd|rd|th)?\s*(?:season|temporada)\b", " ", text)
+    text = re.sub(r"[-\s]+\d+(?:st|nd|rd|th)?[-\s]*(?:season|temporada).*$", " ", text)
+    text = re.sub(r"\s+\d+\s+(?:arise|part|cour|final|shadow).*$", " ", text)
+    text = re.sub(r"[-\s]+\d+$", " ", text)
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _item_season_key(item: dict) -> str:
+    title = item.get("display_title") or item.get("title") or item.get("raw_title") or item.get("id") or ""
+    return _season_group_key(title) or _season_group_key(item.get("id") or "")
+
+
+def _season_entry_from_item(item: dict) -> dict:
+    variants = item.get("variants") or []
+    if not variants:
+        default_id = item.get("default_anime_id") or item.get("id")
+        variants = [{
+            "id": default_id,
+            "title": item.get("title") or item.get("display_title") or default_id,
+            "is_dubbed": bool(item.get("is_dubbed")),
+        }]
+
+    title = item.get("display_title") or item.get("title") or variants[0].get("title") or ""
+    season_number = max(
+        _season_number_from_text(title),
+        _season_number_from_text(item.get("id") or ""),
+        _season_number_from_text(item.get("raw_title") or ""),
+    )
+
+    return {
+        "season": season_number,
+        "title": title,
+        "default_anime_id": item.get("default_anime_id") or item.get("id") or variants[0].get("id"),
+        "variants": variants,
+    }
+
+
+def _with_season_groups(item: dict, results: list[dict]) -> dict:
+    if not item:
+        return item
+
+    key = _item_season_key(item)
+    if not key:
+        return item
+
+    seasons_by_number = {}
+    for candidate in results or []:
+        if _item_season_key(candidate) != key:
+            continue
+        entry = _season_entry_from_item(candidate)
+        season_number = int(entry.get("season") or 1)
+        current = seasons_by_number.get(season_number)
+        if not current:
+            seasons_by_number[season_number] = entry
+            continue
+
+        by_id = {variant.get("id"): variant for variant in current.get("variants") or [] if variant.get("id")}
+        for variant in entry.get("variants") or []:
+            variant_id = variant.get("id")
+            if variant_id and variant_id not in by_id:
+                current.setdefault("variants", []).append(variant)
+
+    if len(seasons_by_number) <= 1:
+        return item
+
+    merged = dict(item)
+    merged["seasons"] = [
+        seasons_by_number[number]
+        for number in sorted(seasons_by_number)
+    ]
+    return merged
 
 
 def _load_anilist_links() -> dict:
@@ -845,12 +996,12 @@ async def _resolve_group_from_anilist_id(anilist_id: str):
         if _item_matches_anilist(item, anilist_id):
             anime_id = item.get("default_anime_id") or item.get("id")
             anime = await asyncio.wait_for(get_anime_details(anime_id), timeout=20)
-            return anime, item
+            return anime, _with_season_groups(item, results)
 
     item = results[0]
     anime_id = item.get("default_anime_id") or item.get("id")
     anime = await asyncio.wait_for(get_anime_details(anime_id), timeout=20)
-    return anime, item
+    return anime, _with_season_groups(item, results)
 
 
 def _remember_group_item(context: ContextTypes.DEFAULT_TYPE, item: dict) -> None:
@@ -862,6 +1013,15 @@ def _remember_group_item(context: ContextTypes.DEFAULT_TYPE, item: dict) -> None
         variant_id = variant.get("id")
         if variant_id:
             context.user_data[f"anime_group:{variant_id}"] = item
+
+    for season in item.get("seasons") or []:
+        season_default_id = season.get("default_anime_id")
+        if season_default_id:
+            context.user_data[f"anime_group:{season_default_id}"] = item
+        for variant in season.get("variants") or []:
+            variant_id = variant.get("id")
+            if variant_id:
+                context.user_data[f"anime_group:{variant_id}"] = item
 
 
 async def start(update, context):
@@ -1038,8 +1198,9 @@ async def start(update, context):
                     sub_count = 1 if any(not v.get("is_dubbed") for v in variants) else 0
                     dub_count = 1 if any(v.get("is_dubbed") for v in variants) else 0
                     available_versions = sub_count + dub_count
+                    has_season_groups = len(group_item.get("seasons") or []) > 1
 
-                    if available_versions <= 1:
+                    if available_versions <= 1 and not has_season_groups:
                         default_id = group_item.get("default_anime_id") or anime_id
                         keyboard = _single_anime_keyboard(
                             anime_id=default_id,
