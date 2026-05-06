@@ -569,6 +569,32 @@ def _sushi_section_matches(item: dict[str, Any], section: str) -> bool:
     return True
 
 
+def _animeplay_section_matches(item: dict[str, Any], section: str) -> bool:
+    text = _normalize_text(" ".join([
+        str(item.get("id") or ""),
+        str(item.get("title") or ""),
+        " ".join(str(g) for g in item.get("genres") or []),
+    ]))
+    is_dubbed = bool(item.get("is_dubbed"))
+    if section == "dublados":
+        return is_dubbed
+    if section == "legendados":
+        return not is_dubbed
+    aliases = {
+        "acao": ("acao", "action", "shounen", "shonen", "battle"),
+        "aventura": ("aventura", "adventure", "isekai"),
+        "comedia": ("comedia", "comedy"),
+        "drama": ("drama",),
+        "fantasia": ("fantasia", "fantasy", "mahou", "isekai"),
+        "romance": ("romance", "romantico", "shoujo", "shojo"),
+        "sobrenatural": ("sobrenatural", "supernatural"),
+        "suspense": ("suspense", "misterio", "mystery", "thriller"),
+    }
+    if section in aliases:
+        return any(alias in text for alias in aliases[section])
+    return True
+
+
 def _score_value(item: dict[str, Any]) -> float:
     try:
         return float(str(item.get("score") or "0").split("/", 1)[0] or 0)
@@ -586,6 +612,22 @@ async def _enrich_sushi_home_cards(raw_items: list[dict[str, Any]], section: str
         seen.add(anime_id)
         shaped = item
         if _has_minimum_catalog_fields(shaped) and _sushi_section_matches(shaped, section):
+            shaped_items.append(shaped)
+        if len(shaped_items) >= GRID_PAGE_LIMIT * 3:
+            break
+    return shaped_items
+
+
+async def _enrich_animeplay_home_cards(raw_items: list[dict[str, Any]], section: str) -> list[dict[str, Any]]:
+    shaped_items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in raw_items:
+        anime_id = item.get("id") or ""
+        if not anime_id or anime_id in seen:
+            continue
+        seen.add(anime_id)
+        shaped = item
+        if _has_minimum_catalog_fields(shaped) and _animeplay_section_matches(shaped, section):
             shaped_items.append(shaped)
         if len(shaped_items) >= GRID_PAGE_LIMIT * 3:
             break
@@ -636,6 +678,8 @@ def _shape_episode_payload(anime_id: str, episode: str, quality: str, item: dict
     video = item.get("video") or ""
     videos = item.get("videos") or {}
     available_qualities = item.get("available_qualities") or []
+    episode_number = item.get("episode_number")
+    season = item.get("season")
 
     if not available_qualities and isinstance(videos, dict):
         available_qualities = list(videos.keys())
@@ -665,6 +709,10 @@ def _shape_episode_payload(anime_id: str, episode: str, quality: str, item: dict
         "prev_episode": item.get("prev_episode"),
         "next_episode": item.get("next_episode"),
         "total_episodes": item.get("total_episodes"),
+        "season": season,
+        "episode_number": episode_number,
+        "episode_title": item.get("episode_title") or item.get("title") or "",
+        "source": item.get("source") or ANIME_SOURCE,
     }
 
 
@@ -697,9 +745,28 @@ def _episode_score(item: dict[str, Any]) -> int:
 
 def _normalize_episode_item(ep: dict[str, Any]) -> dict[str, Any]:
     value = dict(ep or {})
-    number = value.get("number") or value.get("episode") or value.get("ep") or value.get("slug") or ""
+    raw_episode = str(value.get("episode") or value.get("ep") or "").strip()
+    number = value.get("number") or value.get("episode_number") or raw_episode or value.get("slug") or ""
     parsed = _parse_episode_number(number)
-    value["number"] = str(number).strip()
+    season = value.get("season")
+    episode_number = value.get("episode_number")
+    try:
+        season = int(season or 1)
+    except Exception:
+        season = 1
+    try:
+        episode_number = int(episode_number or parsed or 1)
+    except Exception:
+        episode_number = 1
+
+    if not raw_episode or re.fullmatch(r"\d+(?:[.,]\d+)?", raw_episode):
+        raw_episode = f"S{season}E{episode_number}"
+
+    value["episode"] = raw_episode
+    value["number"] = str(value.get("number") or episode_number).strip()
+    value["season"] = season
+    value["episode_number"] = episode_number
+    value["episode_label"] = value.get("episode_label") or (f"T{season:02d}E{episode_number:02d}" if season > 1 else f"{episode_number}º Episódio")
     value["_sort_number"] = parsed if parsed is not None else Decimal("999999")
     value["_sort_title"] = _clean(str(value.get("title") or value.get("number") or ""))
     value["_score"] = _episode_score(value)
@@ -726,15 +793,15 @@ def _normalize_episodes(items: list[dict[str, Any]] | None) -> list[dict[str, An
         item.pop("_score", None)
         item.pop("_sort_title", None)
         item.pop("_sort_number", None)
-        item["prev_episode"] = ordered[index - 1]["number"] if index > 0 else None
-        item["next_episode"] = ordered[index + 1]["number"] if index < total - 1 else None
+        item["prev_episode"] = ordered[index - 1]["episode"] if index > 0 else None
+        item["next_episode"] = ordered[index + 1]["episode"] if index < total - 1 else None
         item["total_episodes"] = total
         cleaned.append(item)
     return cleaned
 
 
 def _has_minimum_catalog_fields(item: dict[str, Any]) -> bool:
-    if _is_sushi_source():
+    if _is_sushi_source() or _is_animeplay_source():
         return bool(item.get("id") and item.get("title"))
     return bool(item.get("id") and item.get("title") and (item.get("cover_url") or item.get("banner_url")))
 
@@ -981,6 +1048,45 @@ async def _get_paginated_section_page(section: str, page: int) -> dict:
             }
 
         return await _cached(f"sushi-page:v2:{section}:{page}", SECTION_TTL, sushi_factory)
+
+    if _is_animeplay_source():
+        async def animeplay_factory():
+            pages_to_fetch = 4 if section in {"em_lancamento", "atualizados", "top"} else 2
+            html_pages = []
+            fetched = await asyncio.gather(
+                *[_get(_section_url(slug, page_num)) for page_num in range(1, pages_to_fetch + 1)],
+                return_exceptions=True,
+            )
+            html_pages.extend([html_doc for html_doc in fetched if isinstance(html_doc, str)])
+
+            raw_items = []
+            for html_doc in html_pages:
+                raw_items.extend(_extract_listing_cards(html_doc))
+
+            items = await _enrich_animeplay_home_cards(raw_items, section)
+            if section in {"em_lancamento", "atualizados"}:
+                items = sorted(items, key=lambda item: item.get("title") or "")
+            elif section == "top":
+                items = sorted(items, key=_score_value, reverse=True)
+
+            total = len(items)
+            total_pages = max(1, (total + GRID_PAGE_LIMIT - 1) // GRID_PAGE_LIMIT) if total else 1
+            current_page = min(max(1, page), total_pages)
+            start = (current_page - 1) * GRID_PAGE_LIMIT
+            end = start + GRID_PAGE_LIMIT
+            return {
+                "section": section,
+                "title": conf["title"],
+                "page": current_page,
+                "limit": GRID_PAGE_LIMIT,
+                "total_items": total,
+                "total_pages": total_pages,
+                "has_next": current_page < total_pages,
+                "has_prev": current_page > 1,
+                "items": items[start:end],
+            }
+
+        return await _cached(f"animeplay-page:v4:{section}:{page}", 120 if section in {"em_lancamento", "atualizados"} else SECTION_TTL, animeplay_factory)
 
     async def meta_factory():
         first_html = await _get(_section_url(slug, 1))
