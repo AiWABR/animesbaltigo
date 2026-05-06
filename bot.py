@@ -21,7 +21,7 @@ from handlers.search import buscar
 from handlers.help import ajuda
 from handlers.callbacks import callbacks
 from handlers.infoanime import infoanime, callback_info_anime
-from handlers.postanime import postanime
+from handlers.postanime import postall, postanime
 from handlers.novoseps import postnovoseps, auto_post_new_eps_job
 from handlers.postfilmes import postfilmes
 from handlers.recommend import recomendar
@@ -115,6 +115,7 @@ def main():
     app.add_handler(CommandHandler("ajuda", ajuda))
     app.add_handler(CommandHandler("infoanime", infoanime))
     app.add_handler(CommandHandler("postanime", postanime))
+    app.add_handler(CommandHandler("postall", postall))
     app.add_handler(CommandHandler("postnovoseps", postnovoseps))
     app.add_handler(CommandHandler("postfilmes", postfilmes))
     app.add_handler(CommandHandler("broadcast", broadcast_command))
