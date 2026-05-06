@@ -152,6 +152,12 @@ def _anime_url(anime_id: str) -> str:
     return f"{BASE_URL}/anime/{quote_plus(_normalize_anime_id(anime_id)).replace('+', '-')}"
 
 
+def _fallback_anime_id(anime_id: str) -> str:
+    value = _normalize_anime_id(anime_id)
+    fallback = re.sub(r"-\d+$", "", value)
+    return fallback if fallback and fallback != value else ""
+
+
 def _parse_episode_ref(value: str) -> tuple[int, int]:
     raw = str(value or "").strip()
     match = re.search(r"^[sStT]?(\d+)[eE:.-](\d+)$", raw)
@@ -719,7 +725,18 @@ async def get_anime_details(anime_id: str):
         return cached
 
     url = _anime_url(anime_id)
-    html_doc = await _request_text(url)
+    try:
+        html_doc = await _request_text(url)
+    except httpx.HTTPStatusError as error:
+        status = error.response.status_code if error.response is not None else 0
+        fallback_id = _fallback_anime_id(anime_id)
+        if status == 404 and fallback_id:
+            data = await get_anime_details(fallback_id)
+            _cache_set(_DETAILS_CACHE, anime_id, data)
+            if _cache_get_stale(_EPISODES_CACHE, fallback_id):
+                _cache_set(_EPISODES_CACHE, anime_id, _cache_get_stale(_EPISODES_CACHE, fallback_id))
+            return data
+        raise
     soup = BeautifulSoup(html_doc, "html.parser")
     title = ""
     h1 = soup.select_one(".data h1, h1")
