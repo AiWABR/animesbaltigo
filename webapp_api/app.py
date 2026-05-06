@@ -891,6 +891,8 @@ async def _enrich_search_item(item: dict[str, Any]) -> dict[str, Any] | None:
     anime_id = item.get("id") or ""
     if not anime_id:
         return None
+    if _is_animeplay_source():
+        return _shape_details(item, anime_id)
     try:
         details = await get_anime_details(anime_id)
     except Exception:
@@ -933,6 +935,14 @@ async def _build_featured_payload() -> dict[str, Any] | None:
             if not anime_id or anime_id in seen:
                 continue
             seen.add(anime_id)
+            if _is_animeplay_source():
+                shaped = _shape_details(candidate, anime_id)
+                if shaped.get("cover_url") or shaped.get("banner_url"):
+                    return {
+                        **shaped,
+                        "description_short": _truncate_description(shaped.get("description") or candidate.get("description") or ""),
+                    }
+                continue
             try:
                 details = await get_anime_details(anime_id)
                 if not details:
@@ -1309,7 +1319,7 @@ async def api_search(
         except Exception:
             upstream = []
 
-        seeds = await _build_search_candidates()
+        seeds = [] if (_is_animeplay_source() and upstream) else await _build_search_candidates()
         merged: dict[str, dict[str, Any]] = {}
         for item in upstream + seeds:
             anime_id = item.get("id") or item.get("default_anime_id") or ""
