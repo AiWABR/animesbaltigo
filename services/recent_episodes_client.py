@@ -56,7 +56,10 @@ def _extract_episode_links_from_home(html: str) -> list[dict]:
             seen.add(key)
 
             text = _clean(a.get_text(" ", strip=True))
-            title = re.sub(r"(?i)^(hoje|ontem|dublado|fullhd|hd|sd)\s+", "", text).strip()
+            title_node = a.select_one(".list-title")
+            title = _clean(title_node.get_text(" ", strip=True) if title_node else "")
+            if not title:
+                title = re.sub(r"(?i)^(hoje|ontem|dublado|fullhd|hd|sd)\s+", "", text).strip()
             title = re.sub(r"\s*\d+\D*\s*Temporada\s*\|\s*\d+\D*\s*Epis[oó]dio.*$", "", title, flags=re.I).strip()
 
             if not title:
@@ -67,12 +70,23 @@ def _extract_episode_links_from_home(html: str) -> list[dict]:
             if not title:
                 title = anime_id.replace("-", " ").title()
 
+            thumb = ""
+            media = a.select_one("[data-src], [data-bg]")
+            if media:
+                thumb = (media.get("data-src") or media.get("data-bg") or "").strip()
+            if not thumb:
+                img = a.find("img")
+                if img:
+                    thumb = (img.get("data-src") or img.get("src") or "").strip()
+
             results.append({
                 "anime_id": anime_id,
                 "episode": episode_key,
                 "season": season,
                 "episode_number": episode,
                 "title": title,
+                "thumb": thumb,
+                "image": thumb,
                 "episode_url": full_url,
                 "key": key,
             })
