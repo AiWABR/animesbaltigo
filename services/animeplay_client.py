@@ -11,16 +11,19 @@ from bs4 import BeautifulSoup
 from core.http_client import get_http_client
 
 BASE_URL = "https://animeplay.cloud"
+ANILIST_API_URL = "https://graphql.anilist.co"
 
 _SEARCH_CACHE = {}
 _DETAILS_CACHE = {}
 _EPISODES_CACHE = {}
 _PLAYER_CACHE = {}
+_ANILIST_CACHE = {}
 
 _SEARCH_CACHE_TTL = 1800
 _DETAILS_CACHE_TTL = 21600
 _EPISODES_CACHE_TTL = 600
 _PLAYER_CACHE_TTL = 21600
+_ANILIST_CACHE_TTL = 86400
 
 _HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0",
@@ -28,6 +31,12 @@ _HTTP_HEADERS = {
     "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
     "Referer": f"{BASE_URL}/",
     "Origin": BASE_URL,
+}
+
+_ANILIST_HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Content-Type": "application/json",
+    "Accept": "application/json",
 }
 
 HTTP_SEMAPHORE = asyncio.Semaphore(20)
@@ -56,6 +65,20 @@ def _clean(value: str | None) -> str:
             pass
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
+
+def _strip_html_tags(value: str | None) -> str:
+    text = html.unescape(str(value or ""))
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    return _clean(text)
+
+
+def _normalize_text(value: str | None) -> str:
+    text = _clean(value).lower()
+    text = re.sub(r"\b(?:dublado|legendado|todos os episodios|todos os episódios|online|hd|gratis|grátis)\b", " ", text)
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _slug_from_url(url: str) -> str:
@@ -131,6 +154,224 @@ async def _post_json(url: str, data: dict, *, referer: str) -> dict:
         response = await client.post(url, data=data, headers=headers)
         response.raise_for_status()
         return response.json()
+
+
+async def _post_graphql(url: str, payload: dict) -> dict:
+    client = await get_http_client()
+    async with HTTP_SEMAPHORE:
+        response = await client.post(url, json=payload, headers=_ANILIST_HEADERS)
+        response.raise_for_status()
+        return response.json()
+
+
+def _best_title_from_anilist(media: dict) -> str:
+    title = media.get("title") or {}
+    return (
+        title.get("userPreferred")
+        or title.get("romaji")
+        or title.get("english")
+        or title.get("native")
+        or ""
+    )
+
+
+def _anilist_status_label(status: str) -> str:
+    return {
+        "FINISHED": "Finalizado",
+        "RELEASING": "Em lançamento",
+        "NOT_YET_RELEASED": "Não lançado",
+        "CANCELLED": "Cancelado",
+        "HIATUS": "Em hiato",
+    }.get((status or "").strip().upper(), status or "")
+
+
+def _anilist_format_label(fmt: str) -> str:
+    return {
+        "TV": "TV",
+        "TV_SHORT": "TV Short",
+        "MOVIE": "Filme",
+        "SPECIAL": "Especial",
+        "OVA": "OVA",
+        "ONA": "ONA",
+        "MUSIC": "Music",
+    }.get((fmt or "").strip().upper(), fmt or "")
+
+
+def _anilist_score(local_title: str, media: dict) -> int:
+    local_norm = _normalize_text(local_title)
+    title = media.get("title") or {}
+    candidates = [
+        title.get("romaji"),
+        title.get("english"),
+        title.get("native"),
+        title.get("userPreferred"),
+        *(media.get("synonyms") or []),
+    ]
+    normalized = [_normalize_text(value) for value in candidates if value]
+    if local_norm and local_norm in normalized:
+        return 100
+    if any(local_norm and (local_norm in value or value in local_norm) for value in normalized):
+        return 90
+    local_tokens = set(local_norm.split())
+    best = 0
+    for value in normalized:
+        tokens = set(value.split())
+        if not tokens:
+            continue
+        overlap = len(local_tokens & tokens)
+        best = max(best, int((overlap / max(len(local_tokens), len(tokens))) * 80))
+    return best
+
+
+async def _search_anilist_by_title(title: str, alt_titles: list[str] | None = None) -> dict | None:
+    candidates = [title, *(alt_titles or [])]
+    search_title = next((_clean(item) for item in candidates if _clean(item)), "")
+    cache_key = _normalize_text(search_title)
+    if not cache_key:
+        return None
+
+    cached = _cache_get(_ANILIST_CACHE, cache_key, _ANILIST_CACHE_TTL)
+    if cached is not None:
+        return cached
+
+    query = """
+    query ($search: String) {
+      Page(page: 1, perPage: 5) {
+        media(search: $search, type: ANIME) {
+          id
+          siteUrl
+          title {
+            romaji
+            english
+            native
+            userPreferred
+          }
+          synonyms
+          description(asHtml: false)
+          averageScore
+          status
+          format
+          episodes
+          season
+          seasonYear
+          genres
+          bannerImage
+          trailer {
+            site
+            id
+          }
+          coverImage {
+            extraLarge
+            large
+            medium
+          }
+          studios(isMain: true) {
+            nodes {
+              name
+            }
+          }
+        }
+      }
+    }
+    """
+
+    best_media = None
+    best_score = -1
+    for candidate in candidates:
+        candidate = _clean(candidate)
+        if not candidate:
+            continue
+        try:
+            data = await _post_graphql(
+                ANILIST_API_URL,
+                {"query": query, "variables": {"search": candidate}},
+            )
+        except Exception as error:
+            print(f"[ANILIST] animeplay_search_error={repr(error)}")
+            continue
+
+        media_items = (((data or {}).get("data") or {}).get("Page") or {}).get("media") or []
+        for media in media_items:
+            score = _anilist_score(title, media)
+            if score > best_score:
+                best_score = score
+                best_media = media
+
+        if best_score >= 90:
+            break
+
+    if not best_media:
+        _cache_set(_ANILIST_CACHE, cache_key, None)
+        return None
+
+    studios = (((best_media.get("studios") or {}).get("nodes")) or [])
+    studio_name = studios[0].get("name") if studios else ""
+    cover = best_media.get("coverImage") or {}
+    result = {
+        "anilist_id": best_media.get("id"),
+        "anilist_url": best_media.get("siteUrl") or "",
+        "title_romaji": ((best_media.get("title") or {}).get("romaji")) or "",
+        "title_english": ((best_media.get("title") or {}).get("english")) or "",
+        "title_native": ((best_media.get("title") or {}).get("native")) or "",
+        "title": _best_title_from_anilist(best_media),
+        "description": _strip_html_tags(best_media.get("description") or ""),
+        "score": best_media.get("averageScore"),
+        "status": _anilist_status_label(best_media.get("status") or ""),
+        "format": _anilist_format_label(best_media.get("format") or ""),
+        "episodes": best_media.get("episodes"),
+        "season": best_media.get("season") or "",
+        "season_year": best_media.get("seasonYear"),
+        "genres": best_media.get("genres") or [],
+        "studio": studio_name,
+        "banner_url": best_media.get("bannerImage") or "",
+        "cover_url": cover.get("extraLarge") or cover.get("large") or cover.get("medium") or "",
+        "media_image_url": cover.get("large") or cover.get("medium") or "",
+        "trailer_id": ((best_media.get("trailer") or {}).get("id")) or "",
+        "trailer_site": ((best_media.get("trailer") or {}).get("site")) or "",
+    }
+    _cache_set(_ANILIST_CACHE, cache_key, result)
+    return result
+
+
+def _merge_anilist_data(local_data: dict, anilist_data: dict | None) -> dict:
+    if not anilist_data:
+        return local_data
+
+    merged = dict(local_data)
+    local_episode_count = local_data.get("episodes")
+
+    for key in (
+        "title",
+        "score",
+        "status",
+        "format",
+        "episodes",
+        "season",
+        "season_year",
+        "genres",
+        "studio",
+        "anilist_id",
+        "anilist_url",
+        "title_romaji",
+        "title_english",
+        "title_native",
+        "media_image_url",
+        "trailer_id",
+        "trailer_site",
+    ):
+        if anilist_data.get(key) not in (None, "", []):
+            merged[key] = anilist_data[key]
+
+    if anilist_data.get("description"):
+        merged["description"] = anilist_data["description"]
+    if anilist_data.get("cover_url"):
+        merged["cover_url"] = anilist_data["cover_url"]
+    if anilist_data.get("banner_url"):
+        merged["banner_url"] = anilist_data["banner_url"]
+
+    merged["source"] = "animeplay"
+    merged["local_episodes"] = local_episode_count
+    return merged
 
 
 def _meta_content(soup: BeautifulSoup, *names: str) -> str:
@@ -320,11 +561,12 @@ async def get_anime_details(anime_id: str):
         if match:
             year = match.group(1)
 
+    alt_titles = _parse_alt_titles(soup)
     data = {
         "id": anime_id,
         "title": title,
         "raw_title": title,
-        "alt_titles": _parse_alt_titles(soup),
+        "alt_titles": alt_titles,
         "description": description,
         "url": url,
         "cover_url": cover,
@@ -342,6 +584,25 @@ async def get_anime_details(anime_id: str):
         "seasons": [1],
         "is_dubbed": _is_dubbed(title, anime_id),
     }
+    anilist_data = await _search_anilist_by_title(title, alt_titles)
+    data = _merge_anilist_data(data, anilist_data)
+
+    final_alt_titles = []
+    seen_alt = set()
+    for value in [
+        *alt_titles,
+        data.get("title_romaji", ""),
+        data.get("title_english", ""),
+        data.get("title_native", ""),
+        title,
+    ]:
+        value = _clean(value)
+        key = value.lower()
+        if value and key not in seen_alt and value != data.get("title"):
+            seen_alt.add(key)
+            final_alt_titles.append(value)
+    data["alt_titles"] = final_alt_titles[:10]
+
     _cache_set(_DETAILS_CACHE, anime_id, data)
     _cache_set(_EPISODES_CACHE, anime_id, episodes)
     return data
