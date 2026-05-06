@@ -409,6 +409,22 @@ def _section_url(slug: str, page: int) -> str:
     return f"{BASE_URL}/{slug}/{page}"
 
 
+def _animeplay_section_path(slug: str) -> str:
+    mapping = {
+        "lista-de-animes-dublados": "tipo/dublado",
+        "lista-de-animes-legendados": "tipo/legendado",
+        "genero/acao": "genre/acao",
+        "genero/aventura": "genre/aventura",
+        "genero/comedia": "genre/comedia",
+        "genero/drama": "genre/drama",
+        "genero/fantasia": "genre/fantasia",
+        "genero/romance": "genre/romance",
+        "genero/sobrenatural": "genre/sobrenatural",
+        "genero/suspense": "genre/suspense",
+    }
+    return mapping.get(slug, "")
+
+
 def _cache_get(key: str, ttl: int) -> Any | None:
     item = _CACHE.get(key)
     if not item:
@@ -503,6 +519,43 @@ def _extract_last_page(page_html: str, slug: str) -> int:
         if match:
             max_page = max(max_page, int(match.group(1)))
     return max_page
+
+
+async def _animeplay_page_has_items(slug: str, page: int) -> bool:
+    if page <= 1:
+        return True
+    try:
+        html_doc = await _get(_section_url(slug, page))
+    except Exception:
+        return False
+    return bool(_extract_listing_cards(html_doc))
+
+
+async def _animeplay_total_pages(slug: str, first_html: str) -> int:
+    visible = max(1, _extract_last_page(first_html, slug))
+    if not _animeplay_section_path(slug):
+        return visible
+
+    cache_key = f"animeplay-total-pages:{slug}"
+    cached = _cache_get(cache_key, SECTION_TTL)
+    if cached is not None:
+        return int(cached)
+
+    low = visible
+    high = max(visible + 1, 2)
+    while high <= 128 and await _animeplay_page_has_items(slug, high):
+        low = high
+        high *= 2
+
+    upper = min(high, 256)
+    while low + 1 < upper:
+        mid = (low + upper) // 2
+        if await _animeplay_page_has_items(slug, mid):
+            low = mid
+        else:
+            upper = mid
+
+    return int(_cache_set(cache_key, max(1, low)))
 
 
 def _media_url_from_node(node) -> str:
@@ -719,6 +772,10 @@ def _shape_details(data: dict, fallback_id: str = "") -> dict:
         "anilist_title": _clean(data.get("anilist_title") or ""),
         "anilist_episodes": data.get("anilist_episodes"),
         "alt_titles": _clean_alt_titles(data.get("alt_titles") or []),
+        "variants": data.get("variants") or [],
+        "default_anime_id": data.get("default_anime_id") or anime_id,
+        "has_dubbed": bool(data.get("has_dubbed")),
+        "has_subbed": bool(data.get("has_subbed")),
     }
 
 
@@ -1112,7 +1169,7 @@ async def _get_paginated_section_page(section: str, page: int) -> dict:
     if _is_animeplay_source():
         async def animeplay_factory():
             first_html = await _get(_section_url(slug, 1))
-            source_total_pages = _extract_last_page(first_html, slug)
+            source_total_pages = await _animeplay_total_pages(slug, first_html)
             current_page = min(max(1, page), max(1, source_total_pages))
             page_html = first_html if current_page == 1 else await _get(_section_url(slug, current_page))
             raw_items = _extract_listing_cards(page_html)
@@ -1349,7 +1406,7 @@ async def api_search(
             cleaned.append(item)
         return {"items": cleaned, "suggestions": suggestions}
 
-    payload = await _cached(f"search:v2:{normalized_query}", SEARCH_TTL, factory)
+    payload = await _cached(f"search:v3:{normalized_query}", SEARCH_TTL, factory)
     shaped = payload.get("items") or []
     suggestions = payload.get("suggestions") or []
 
