@@ -86,7 +86,7 @@
     .thumb.loaded::before,.thumb.failed::before,.image-box.loaded::before,.image-box.failed::before{display:none}
     .thumb::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.88),transparent 48%)}
     .fallback-logo{position:absolute;inset:0;display:none;place-items:center;color:#777;font-size:26px;font-weight:900;letter-spacing:-.03em;background:#121214}.thumb.failed .fallback-logo,.image-box.failed .fallback-logo{display:grid}
-    .badge{position:absolute;top:9px;left:9px;z-index:3;background:var(--brand);color:#fff;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:900}
+    .badge{position:absolute;top:9px;left:9px;z-index:3;background:var(--brand);color:#fff;border-radius:7px;min-height:24px;min-width:42px;padding:0 8px;font-size:11px;font-weight:900;line-height:1;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
     .ep-badge{position:absolute;right:9px;bottom:9px;z-index:3;background:rgba(0,0,0,.78);border:1px solid #34343a;border-radius:7px;padding:4px 8px;font-size:12px;font-weight:900}
     .card-play{position:absolute;inset:0;z-index:4;display:grid;place-items:center;background:rgba(0,0,0,.25);opacity:0;transition:.16s}.card:hover .card-play{opacity:1}.card-play span{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:var(--brand)}
     .card-body{padding:10px 2px 0}.card-title{font-weight:900;font-size:14px;line-height:1.32;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.card-meta{margin-top:4px;color:var(--muted);font-size:12px}
@@ -110,7 +110,7 @@
     .ep-layout{display:grid;grid-template-columns:190px 1fr;gap:34px;margin-top:24px}.seasons{border-right:1px solid #1b1b1f;padding:2px 0}.season-btn{width:100%;height:50px;text-align:left;color:#f5f5f7;font-weight:900;position:relative;padding-left:28px}.season-btn.active{color:var(--brand)}.season-btn.active::after{content:"";position:absolute;right:-2px;top:9px;width:4px;height:32px;border-radius:3px;background:var(--brand)}
     .episodes{display:grid;gap:9px}.episodes.grid-mode{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}.episodes.compact-mode{gap:0}
     .ep-card{position:relative;min-height:82px;border-radius:8px;border:1px solid transparent;background:#000;display:grid;grid-template-columns:120px 1fr auto;align-items:center;gap:24px;padding:8px 12px;transition:.15s}.ep-card:hover{background:#050506;border-color:#17171a}.ep-card.watched{opacity:.64}
-    .ep-thumb{width:120px;height:68px;border-radius:7px;background:#111;position:relative;overflow:hidden}.ep-thumb img,.side-thumb img{width:100%;height:100%;object-fit:cover;display:block}.ep-title{font-weight:900;font-size:15px}.ep-name{font-size:14px;color:#f5f5f7}.ep-meta{font-size:12px;color:var(--muted);margin-top:2px}
+    .ep-thumb{width:120px;height:68px;border-radius:7px;background:#111;position:relative;overflow:hidden}.ep-thumb img,.side-thumb img{width:100%;height:100%;object-fit:cover;display:block}.ep-title{font-weight:900;font-size:15px;margin-bottom:2px}.ep-name{font-size:14px;color:#f5f5f7;line-height:1.35}.ep-meta{font-size:12px;color:var(--muted);margin-top:4px}
     .switch{width:48px;height:30px;border-radius:999px;background:#2b2b2f;position:relative;flex-shrink:0}.switch::after{content:"";position:absolute;left:4px;top:4px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.15s}.ep-card.watched .switch{background:var(--brand)}.ep-card.watched .switch::after{transform:translateX(18px)}
     .episodes.grid-mode .ep-card{display:block;padding:0;overflow:hidden;background:#080809}.episodes.grid-mode .ep-thumb{width:100%;height:auto;aspect-ratio:16/9;border-radius:0}.episodes.grid-mode .ep-copy{padding:10px 12px 44px}.episodes.grid-mode .switch{position:absolute;right:10px;bottom:10px}
     .episodes.compact-mode .ep-card{grid-template-columns:1fr auto;min-height:48px;border-radius:0;border-bottom:1px solid #111;padding:6px 8px}.episodes.compact-mode .ep-thumb{display:none}.episodes.compact-mode .ep-title{font-size:13px}.episodes.compact-mode .ep-name{font-size:13px}
@@ -133,7 +133,7 @@
     }
     @media (max-width:620px){
       body{font-size:13px}.shell{width:calc(100% - 20px)}.page{padding-top:10px;padding-bottom:calc(84px + var(--safe-bottom))}
-      .brand-mark{width:42px;height:42px}.brand-name{font-size:22px}.brand-sub{font-size:10px;letter-spacing:.24em}.mobile-tabs{display:none}.card-play{display:none}.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:70;display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:7px 8px calc(7px + var(--safe-bottom));background:rgba(6,6,7,.94);backdrop-filter:blur(16px);border-top:1px solid #19191d}.bottom-nav button{min-height:48px;border-radius:11px;color:#bdbdc5;display:grid;place-items:center;font-size:10px;font-weight:800}.bottom-nav i{font-size:16px}.bottom-nav button.active{color:#fff;background:rgba(255,65,46,.14)}
+      .brand-mark{width:42px;height:42px}.brand-name{font-size:22px}.brand-sub{font-size:10px;letter-spacing:.24em}.mobile-tabs{display:none}.card-play{display:none}.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:70;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;padding:7px 8px calc(7px + var(--safe-bottom));background:rgba(6,6,7,.94);backdrop-filter:blur(16px);border-top:1px solid #19191d}.bottom-nav button{min-width:0;min-height:48px;border-radius:11px;color:#bdbdc5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;font-weight:800;overflow:hidden}.bottom-nav button span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bottom-nav i{font-size:16px;line-height:1}.bottom-nav button.active{color:#fff;background:rgba(255,65,46,.14)}
       .hero{height:360px;border-radius:9px}.hero-body{left:16px;right:58px;bottom:52px;width:auto}.hero-title{font-size:clamp(22px,7.2vw,28px);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.kicker{font-size:12px}.hero-controls{right:8px}.hero-arrow{width:42px;height:42px}.hero-meta{display:none}
       .grid{grid-template-columns:repeat(2,calc((100% - 12px)/2));gap:12px;overflow:hidden}.grid.wide{grid-template-columns:repeat(2,calc((100% - 12px)/2))}.rail-cards{grid-auto-columns:82%;gap:12px}.section-title{font-size:19px}.card{width:100%;min-width:0}.card-title{font-size:13px}
       .detail-top{display:block}.crumbline{margin:0 0 12px}.poster-box{width:min(58vw,210px);margin:0 auto}.status{height:46px;margin:10px 0 14px}.detail-info{padding-top:0}.tags{gap:8px;align-items:flex-start;flex-wrap:nowrap;overflow:auto;padding-bottom:3px;scrollbar-width:none}.tags::-webkit-scrollbar{display:none}.genre{font-size:14px;white-space:nowrap}.detail-title{font-size:clamp(25px,8vw,30px)}.alt-title{font-size:15px}.actions .btn{flex:1;min-width:132px}.stats{grid-template-columns:repeat(2,1fr);gap:14px}.syn{font-size:14px}
@@ -170,7 +170,7 @@
 
   <script>
     const API = "";
-    const SOURCE_BASE = "https://sushianimes.com.br";
+    const SOURCE_BASE = "https://animeplay.cloud";
     const CACHE_TTL = 5 * 60 * 1000;
     const app = document.getElementById("app");
     const searchInput = document.getElementById("searchInput");
@@ -260,6 +260,10 @@
     function cssImageFor(item, fallbackItem){ return cssImage(proxiedImageUrl(bestImage(item, fallbackItem))); }
     function animeIdOf(item){ return item?.anime_id || item?.default_anime_id || (String(item?.id || "").split("__ep__")[0]); }
     function isDub(item){ return !!item?.is_dubbed || /\bdublado\b/i.test(`${item?.title||""} ${item?.id||""}`); }
+    function useful(value){
+      const raw = text(value);
+      return raw && !/^(n\/a|na|none|null|-|undefined)$/i.test(raw) ? raw : "";
+    }
     function epRef(value){ const raw = String(value || ""); let m = raw.match(/^S?(\d+)E(\d+)$/i); if (m) return {season:+m[1], episode:+m[2]}; m = raw.match(/^(\d+)-season-(\d+)-episode$/i); if (m) return {season:+m[1], episode:+m[2]}; m = raw.match(/\d+/); return {season:1, episode:m ? +m[0] : 1}; }
     function seasonOf(ep){ return +(ep?.season || epRef(ep?.episode).season || 1); }
     function epNo(ep){ return +(ep?.episode_number || epRef(ep?.episode).episode || ep?.number || 1); }
@@ -363,7 +367,13 @@
     function chooseHero(featured,recent,sections){
       const pool = [...featured, ...(sections.top?.items||[]), ...(sections.em_lancamento?.items||[]), ...recent].filter(Boolean);
       const seen = new Set();
-      return pool.filter(item => { const id=animeIdOf(item); if(!id||seen.has(id)) return false; seen.add(id); return true; }).slice(0,8);
+      return pool.filter(item => {
+        const id=animeIdOf(item);
+        if(!id||seen.has(id)) return false;
+        if(imgUrl(item) === FALLBACK_IMG) return false;
+        seen.add(id);
+        return true;
+      }).slice(0,8);
     }
     function renderHero(){
       const el = document.getElementById("heroMount"); if(!el) return;
@@ -470,17 +480,30 @@
     function seasonsFrom(items){ return [...new Set(items.map(seasonOf))].sort((a,b)=>a-b); }
 
     function renderAnime(){
-      const a = currentAnime, eps = currentEpisodes, seasons = a.seasons?.length ? a.seasons : seasonsFrom(eps);
+      const a = currentAnime, eps = currentEpisodes, seasons = seasonsFrom(eps).length ? seasonsFrom(eps) : (a.seasons?.length ? a.seasons : [1]);
+      if(!seasons.includes(+currentSeason)) currentSeason = seasons[0] || 1;
       const fav = isFavorite(a.id), watched = eps.filter(ep=>isWatched(a.id,ep)).length, pct = eps.length ? Math.round(watched/eps.length*100) : 0;
       const trailer = trailerUrl(a), canMore = (a.description||"").length > 260;
+      const status = useful(a.status);
+      const age = useful(a.age_rating || a.rating || a.classification);
+      const stats = [
+        ["EpisÃ³dios", eps.length || a.episodes],
+        ["Score", a.score],
+        ["Ano", a.year || a.season_year],
+        ["Status", status],
+        ["DuraÃ§Ã£o", a.duration || (eps.length ? "24 min" : "")],
+        ["Ãudio", isDub(a) ? "Dublado" : "Legendado"],
+        ["Temporada", useful(a.season)],
+        ["EstÃºdio", useful(a.studio)]
+      ].filter(([,v]) => useful(v));
       mount(`<div class="detail-top">
         <div class="crumbline"><button onclick="showHome()">Início</button> &nbsp;-&nbsp; ${esc(a.title)}</div>
-        <aside><div class="image-box poster-box">${posterImage(a)}</div><div class="status"><i class="fa-solid fa-check"></i> ${esc(a.status||"Disponível")}</div></aside>
+        <aside><div class="image-box poster-box">${posterImage(a)}</div>${status?`<div class="status"><i class="fa-solid fa-check"></i> ${esc(status)}</div>`:""}</aside>
         <section class="detail-info">
-          <div class="tags"><span class="age">16</span>${(a.genres||[]).slice(0,8).map(g=>`<span class="genre">${esc(g)}</span>`).join("")}</div>
+          <div class="tags">${age?`<span class="age">${esc(age.replace(/[^0-9+]/g,"") || age)}</span>`:""}${(a.genres||[]).filter(useful).slice(0,8).map(g=>`<span class="genre">${esc(g)}</span>`).join("")}</div>
           <h1 class="detail-title">${esc(a.title)}</h1>${(a.alt_titles||[])[0]?`<div class="alt-title">${esc(a.alt_titles[0])}</div>`:""}
           <div class="actions">${trailer?`<button class="btn primary" onclick="openTrailer('${esc(trailer)}')"><i class="fa-solid fa-play"></i> Trailer</button>`:""}<button class="btn ${fav?"active":""}" id="favBtn" onclick="toggleFavoriteCurrent()"><i class="fa-solid fa-heart"></i> ${fav?"Favoritado":"Favoritar"}</button></div>
-          <div class="stats">${stat("Episódios",eps.length||a.episodes||"-")}${stat("AniList",a.anilist_episodes||"-")}${stat("Score",a.score||"-")}${stat("Ano",a.year||"-")}${stat("Status",a.status||"-")}${stat("Duração",a.duration||"24 min")}${stat("Áudio",isDub(a)?"Dublado":"Legendado")}${stat("Temporada",a.season||"-")}${stat("Estúdio",a.Baltigo||"-")}</div>
+          <div class="stats">${stat("Episódios",eps.length||a.episodes||"-")}${stat("AniList",a.anilist_episodes||"-")}${stat("Score",a.score||"-")}${stat("Ano",a.year||"-")}${stat("Status",a.status||"-")}${stat("Duração",a.duration||"24 min")}${stat("Áudio",isDub(a)?"Dublado":"Legendado")}${stat("Temporada",a.season||"-")}${stat("Estúdio",a.studio||"-")}</div>
           <div class="progress-box"><div class="progress-label"><span>${watched} de ${eps.length} episódios assistidos</span><span>${pct}%</span></div><div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div></div>
           ${a.description?`<div class="syn-title">Sinopse</div><p class="syn ${canMore?"collapsed":""}" id="synopsis">${esc(a.description)}</p>${canMore?`<button class="btn ghost small" id="moreBtn" onclick="toggleSynopsis()">Mostrar mais</button>`:""}`:""}
         </section>
@@ -495,7 +518,11 @@
       </div><div class="ep-layout"><nav class="seasons">${seasons.map(s=>`<button class="season-btn ${+s===+currentSeason?"active":""}" data-season="${s}">${s}º Temporada</button>`).join("")}</nav><div id="episodesMount"></div></div></section>`);
       bindEpisodeControls(); renderEpisodes();
     }
-    function stat(label,value){ return `<div><div class="stat-label">${esc(label)}</div><div class="stat-value">${esc(value)}</div></div>`; }
+    function stat(label,value){
+      value = useful(value);
+      if(!value || label === "AniList") return "";
+      return `<div><div class="stat-label">${esc(label)}</div><div class="stat-value">${esc(value)}</div></div>`;
+    }
     function trailerUrl(a){ return a.trailer_url || a.youtube_url || a.trailer || a.anilist_url || ""; }
     function openTrailer(url){ const tg=window.Telegram?.WebApp; try{ tg?.openLink ? tg.openLink(url) : window.open(url,"_blank","noopener"); }catch(e){ window.open(url,"_blank","noopener"); } }
     function toggleSynopsis(){ const p=document.getElementById("synopsis"), b=document.getElementById("moreBtn"); if(!p||!b)return; const collapsed=p.classList.toggle("collapsed"); b.textContent=collapsed?"Mostrar mais":"Mostrar menos"; }
