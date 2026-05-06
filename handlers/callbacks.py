@@ -522,12 +522,6 @@ def _format_title_with_version(
     base_title = _clean_button_title(title) if clean else (title or "").strip()
     base_title = base_title or "Sem título"
 
-    if is_dubbed is True:
-        return f"{base_title} [DUBLADO]"
-
-    if is_dubbed is False:
-        return f"{base_title} [LEGENDADO]"
-
     return base_title
 
 
