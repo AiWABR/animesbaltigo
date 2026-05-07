@@ -451,6 +451,8 @@ async def _cached(key: str, ttl: int, factory) -> Any:
         if cached is not None:
             return cached
         data = await factory()
+        if data is None:
+            return None
         return _cache_set(key, data)
 
 
@@ -1449,10 +1451,11 @@ async def api_anime(anime_id: str):
 
         episodes_payload = await get_episodes(anime_id, 0, MAX_EPISODES_FETCH)
         episodes = _normalize_episodes(episodes_payload.get("all_items") or episodes_payload.get("items") or [])
+        if not episodes:
+            return None
         item = _shape_details(data, anime_id)
-        if episodes:
-            item["episodes"] = len(episodes)
-            item["seasons"] = sorted({int(ep.get("season") or 1) for ep in episodes})
+        item["episodes"] = len(episodes)
+        item["seasons"] = sorted({int(ep.get("season") or 1) for ep in episodes})
         return {"item": item, "episodes": episodes}
 
     payload = await _cached(f"anime:{anime_id}", ANIME_TTL, factory)
@@ -1832,6 +1835,11 @@ async def app_index():
     return response
 
 
+@app.get("/app/")
+async def app_index_slash():
+    return await app_index()
+
+
 @app.get("/watch")
 async def app_watch():
     watch_path = MINIAPP_DIR / "watch.html"
@@ -1907,6 +1915,10 @@ async def proxy_stream(
         "Referer": BASE_URL + "/",
         "Origin": BASE_URL,
     }
+    parsed_video_url = urlsplit(url)
+    if parsed_video_url.netloc.lower().endswith("aniplay.online"):
+        outgoing_headers["Referer"] = "https://aniplay.online/"
+        outgoing_headers["Origin"] = "https://aniplay.online"
 
     if range_header:
         outgoing_headers["Range"] = range_header
