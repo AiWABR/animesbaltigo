@@ -154,8 +154,62 @@ def _anime_url(anime_id: str) -> str:
 
 def _fallback_anime_id(anime_id: str) -> str:
     value = _normalize_anime_id(anime_id)
-    fallback = re.sub(r"-\d+$", "", value)
-    return fallback if fallback and fallback != value else ""
+    candidates = [
+        re.sub(r"-\d+(?:st|nd|rd|th)?-season.*$", "", value),
+        re.sub(r"-season-\d+.*$", "", value),
+        re.sub(r"-(?:part|cour)-\d+.*$", "", value),
+        re.sub(r"-\d+$", "", value),
+    ]
+    for fallback in candidates:
+        fallback = fallback.strip("-")
+        if fallback and fallback != value:
+            return fallback
+    return ""
+
+
+def _search_query_from_anime_id(anime_id: str) -> str:
+    value = _normalize_anime_id(anime_id)
+    value = re.sub(r"-(?:legendado|dublado|dub|sub)$", "", value, flags=re.I)
+    value = re.sub(r"-todos-os-episodios$", "", value, flags=re.I)
+    value = re.sub(r"-\d+(?:st|nd|rd|th)?-season.*$", "", value, flags=re.I)
+    value = re.sub(r"-season-\d+.*$", "", value, flags=re.I)
+    value = re.sub(r"-(?:part|cour)-\d+.*$", "", value, flags=re.I)
+    value = re.sub(r"-\d+$", "", value)
+    return re.sub(r"\s+", " ", value.replace("-", " ")).strip()
+
+
+async def _resolve_existing_anime_id(anime_id: str) -> str:
+    query = _search_query_from_anime_id(anime_id)
+    if not query:
+        return ""
+    try:
+        results = await search_anime(query, limit=12)
+    except Exception:
+        return ""
+
+    wanted_dub = _is_dubbed("", anime_id)
+    normalized_original = _normalize_text(anime_id)
+    for item in results:
+        candidates = [item, *(item.get("variants") or [])]
+        for candidate in candidates:
+            candidate_id = candidate.get("id") or candidate.get("default_anime_id") or ""
+            if not candidate_id:
+                continue
+            if wanted_dub != _is_dubbed(candidate.get("title") or "", candidate_id):
+                continue
+            candidate_norm = _normalize_text(candidate_id)
+            if candidate_norm and (
+                candidate_norm in normalized_original
+                or _normalize_text(query) in candidate_norm
+                or candidate_norm in _normalize_text(query)
+            ):
+                return candidate_id
+
+    for item in results:
+        candidate_id = item.get("default_anime_id") or item.get("id") or ""
+        if candidate_id:
+            return candidate_id
+    return ""
 
 
 def _parse_episode_ref(value: str) -> tuple[int, int]:
@@ -730,12 +784,27 @@ async def get_anime_details(anime_id: str):
     except httpx.HTTPStatusError as error:
         status = error.response.status_code if error.response is not None else 0
         fallback_id = _fallback_anime_id(anime_id)
+        if status == 404:
+            resolved_id = await _resolve_existing_anime_id(anime_id)
+            if resolved_id and resolved_id != anime_id:
+                data = await get_anime_details(resolved_id)
+                _cache_set(_DETAILS_CACHE, anime_id, data)
+                if _cache_get_stale(_EPISODES_CACHE, resolved_id):
+                    _cache_set(_EPISODES_CACHE, anime_id, _cache_get_stale(_EPISODES_CACHE, resolved_id))
+                return data
         if status == 404 and fallback_id:
-            data = await get_anime_details(fallback_id)
-            _cache_set(_DETAILS_CACHE, anime_id, data)
-            if _cache_get_stale(_EPISODES_CACHE, fallback_id):
-                _cache_set(_EPISODES_CACHE, anime_id, _cache_get_stale(_EPISODES_CACHE, fallback_id))
-            return data
+            try:
+                data = await get_anime_details(fallback_id)
+                _cache_set(_DETAILS_CACHE, anime_id, data)
+                if _cache_get_stale(_EPISODES_CACHE, fallback_id):
+                    _cache_set(_EPISODES_CACHE, anime_id, _cache_get_stale(_EPISODES_CACHE, fallback_id))
+                return data
+            except httpx.HTTPStatusError as fallback_error:
+                fallback_status = fallback_error.response.status_code if fallback_error.response is not None else 0
+                if fallback_status != 404:
+                    raise
+            except Exception:
+                pass
         raise
     soup = BeautifulSoup(html_doc, "html.parser")
     title = ""
@@ -811,9 +880,11 @@ async def get_anime_details(anime_id: str):
         data["episodes"] = len(episodes)
         data["seasons"] = sorted({int(item.get("season") or 1) for item in episodes}) or [1]
 
-    _cache_set(_DETAILS_CACHE, anime_id, data)
-    if episodes or stale_episodes is None:
+    if episodes:
+        _cache_set(_DETAILS_CACHE, anime_id, data)
         _cache_set(_EPISODES_CACHE, anime_id, episodes)
+    elif stale_episodes:
+        _cache_set(_DETAILS_CACHE, anime_id, data)
     return data
 
 
