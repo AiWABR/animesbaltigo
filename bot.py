@@ -33,6 +33,7 @@ from handlers.broadcast import (
     broadcast_command,
     broadcast_callbacks,
     broadcast_message_router,
+    broadcast_public_callbacks,
 )
 from handlers.referral import indicacoes, referral_button
 from handlers.referral_admin import refstats, auto_referral_check_job
@@ -144,6 +145,7 @@ def main():
     # Callbacks
     app.add_handler(CallbackQueryHandler(callback_info_anime, pattern=r"^info_anime:"))
     app.add_handler(CallbackQueryHandler(broadcast_callbacks, pattern=r"^bc\|"))
+    app.add_handler(CallbackQueryHandler(broadcast_public_callbacks, pattern=r"^bc_public\|"))
     app.add_handler(CallbackQueryHandler(referral_button, pattern=r"^noop_indicar$"))
     app.add_handler(CallbackQueryHandler(callbacks))
 
