@@ -3,237 +3,439 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Vitrine Baltigo</title>
-  <meta name="theme-color" content="#050506" />
+  <title>Universo Baltigo</title>
+  <meta name="theme-color" content="#070708" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root {
-      --bg: #050506;
-      --panel: #0d0d10;
-      --panel-2: #151519;
-      --line: #24242a;
-      --text: #ffffff;
-      --soft: #c9c9d2;
-      --muted: #8b8b97;
-      --brand: #ff3b30;
+      --bg: #070708;
+      --panel: #101114;
+      --panel-2: #17181d;
+      --line: rgba(255,255,255,.1);
+      --line-2: rgba(255,255,255,.18);
+      --text: #fff;
+      --soft: #d7d8df;
+      --muted: #9b9da8;
+      --brand: #ff3d34;
+      --brand-2: #b81424;
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    html { background: var(--bg); color-scheme: dark; }
+    html { background: var(--bg); color-scheme: dark; scroll-behavior: smooth; }
     body {
       min-height: 100dvh;
-      background:
-        radial-gradient(circle at 15% 0%, rgba(255, 59, 48, .18), transparent 28%),
-        radial-gradient(circle at 90% 10%, rgba(255, 192, 64, .09), transparent 24%),
-        var(--bg);
+      background: var(--bg);
       color: var(--text);
       font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      line-height: 1.5;
       -webkit-font-smoothing: antialiased;
     }
 
-    a, button { color: inherit; font: inherit; }
+    button, a { font: inherit; color: inherit; }
     button { border: 0; cursor: pointer; }
     img { display: block; width: 100%; }
 
-    .app {
-      width: min(100% - 22px, 760px);
+    .page {
+      width: min(100% - 24px, 720px);
       margin: 0 auto;
-      padding: calc(18px + var(--safe-top)) 0 calc(22px + var(--safe-bottom));
+      padding: calc(14px + var(--safe-top)) 0 calc(24px + var(--safe-bottom));
     }
 
     .topbar {
-      min-height: 72px;
+      min-height: 54px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
       gap: 12px;
-      min-width: 0;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      padding: 8px 0;
+      background: linear-gradient(180deg, rgba(7,7,8,.98), rgba(7,7,8,.82));
+      backdrop-filter: blur(14px);
     }
 
-    .logo {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
+    .wordmark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
       display: grid;
       place-items: center;
-      background: linear-gradient(145deg, #ff4c39, #b91513);
-      box-shadow: 0 14px 38px rgba(255, 59, 48, .26);
-      font-size: 24px;
-      font-weight: 900;
-    }
-
-    .brand h1 {
-      font-size: clamp(22px, 6vw, 34px);
-      line-height: 1.03;
-      letter-spacing: 0;
-      font-weight: 900;
-    }
-
-    .brand p {
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 750;
-    }
-
-    .qg {
-      min-height: 40px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.1);
-      background: rgba(255,255,255,.05);
-      padding: 0 14px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: #f2f2f5;
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 850;
-      white-space: nowrap;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 10px;
-    }
-
-    .card {
-      min-width: 0;
-      overflow: hidden;
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.08);
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
-      box-shadow: 0 18px 50px rgba(0,0,0,.28);
-      text-align: left;
-      transition: transform .16s ease, border-color .16s ease, background .16s ease;
-    }
-
-    .card:active { transform: scale(.985); }
-    .card:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
-
-    .visual {
-      position: relative;
-      aspect-ratio: 16 / 10;
-      background: #121216;
-      overflow: hidden;
-    }
-
-    .visual img {
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .visual::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(0deg, rgba(0,0,0,.44), transparent 62%);
-      pointer-events: none;
-    }
-
-    .body {
-      padding: 14px;
-      min-height: 162px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .name {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      background: linear-gradient(145deg, var(--brand), var(--brand-2));
+      box-shadow: 0 12px 32px rgba(255,61,52,.24);
       font-size: 18px;
-      line-height: 1.12;
-      font-weight: 900;
-      letter-spacing: 0;
     }
 
-    .tag {
-      width: 28px;
-      height: 28px;
-      border-radius: 9px;
-      display: grid;
-      place-items: center;
+    .language {
+      position: relative;
       flex: 0 0 auto;
-      background: rgba(255,59,48,.15);
-      color: #ffb6ae;
-      font-size: 15px;
     }
 
-    .desc {
-      color: var(--soft);
-      font-size: 13.5px;
-      line-height: 1.45;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .open {
-      margin-top: auto;
-      min-height: 36px;
-      border-radius: 10px;
+    .language-button {
+      min-height: 38px;
+      min-width: 96px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.06);
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
+      color: #f6f6f8;
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .language-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 8px);
+      width: 180px;
+      padding: 6px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(15,15,18,.98);
+      box-shadow: 0 20px 54px rgba(0,0,0,.55);
+      display: none;
+    }
+
+    .language.open .language-menu { display: grid; gap: 4px; }
+
+    .language-menu button {
+      min-height: 40px;
+      border-radius: 10px;
+      background: transparent;
+      color: var(--soft);
+      text-align: left;
+      padding: 0 10px;
+      font-size: 13px;
+      font-weight: 780;
+    }
+
+    .language-menu button.active,
+    .language-menu button:hover {
+      background: rgba(255,255,255,.08);
+      color: #fff;
+    }
+
+    .hero {
+      position: relative;
+      min-height: 620px;
+      border-radius: 0 0 24px 24px;
+      overflow: hidden;
+      background: #111;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: 0 30px 90px rgba(0,0,0,.5);
+    }
+
+    .hero img {
+      position: absolute;
+      inset: 0;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(180deg, rgba(0,0,0,.12), rgba(0,0,0,.38) 44%, rgba(0,0,0,.93)),
+        linear-gradient(90deg, rgba(0,0,0,.56), transparent 62%);
+    }
+
+    .hero-copy {
+      position: absolute;
+      left: 20px;
+      right: 20px;
+      bottom: 24px;
+      z-index: 2;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      min-height: 30px;
+      align-items: center;
+      border-radius: 999px;
+      padding: 0 11px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.16);
+      color: #f4f4f7;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .hero h1 {
+      margin-top: 14px;
+      max-width: 620px;
+      font-size: clamp(34px, 11vw, 68px);
+      line-height: .94;
+      font-weight: 950;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    .hero p {
+      margin-top: 18px;
+      max-width: 620px;
+      color: #ededf3;
+      font-size: clamp(15px, 4vw, 18px);
+      font-weight: 650;
+    }
+
+    .intro {
+      margin-top: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.035));
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .intro p {
+      color: var(--soft);
+      font-size: 15px;
+      margin-top: 12px;
+    }
+
+    .intro p:first-child { margin-top: 0; }
+
+    .section-title {
+      margin: 28px 0 12px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .section-title h2 {
+      font-size: 23px;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    .section-title span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      white-space: nowrap;
+    }
+
+    .list {
+      display: grid;
+      gap: 18px;
+    }
+
+    .bot-card {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--panel);
+      box-shadow: 0 22px 70px rgba(0,0,0,.28);
+    }
+
+    .bot-banner {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: #141419;
+      overflow: hidden;
+    }
+
+    .bot-banner img {
+      height: 100%;
+      object-fit: cover;
+      transition: transform .28s ease;
+    }
+
+    .bot-banner::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, transparent 46%, rgba(0,0,0,.86));
+    }
+
+    .bot-card:active .bot-banner img { transform: scale(1.015); }
+
+    .bot-body {
+      padding: 18px;
+    }
+
+    .meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .handle {
+      color: #ffb4ae;
+      text-transform: none;
+      letter-spacing: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bot-card h3 {
+      margin-top: 10px;
+      font-size: clamp(26px, 7vw, 42px);
+      line-height: .98;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+
+    .bot-card p {
+      margin-top: 13px;
+      color: var(--soft);
+      font-size: 15.5px;
+      line-height: 1.58;
+    }
+
+    .actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .primary {
+      min-height: 46px;
+      border-radius: 12px;
       background: var(--brand);
       color: #fff;
-      font-size: 13px;
-      font-weight: 900;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-weight: 920;
+      min-width: 150px;
+    }
+
+    .secondary {
+      min-height: 46px;
+      border-radius: 12px;
+      border: 1px solid var(--line-2);
+      background: rgba(255,255,255,.05);
+      color: #fff;
+      padding: 0 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-weight: 850;
+    }
+
+    .closing {
+      margin-top: 20px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,61,52,.3);
+      background: linear-gradient(145deg, rgba(255,61,52,.16), rgba(255,255,255,.04));
+      padding: 20px;
+    }
+
+    .closing h2 {
+      font-size: 26px;
+      line-height: 1.05;
+      font-weight: 950;
+    }
+
+    .closing p {
+      margin-top: 12px;
+      color: var(--soft);
+      font-size: 15px;
     }
 
     .footer {
       margin: 18px 0 0;
       color: var(--muted);
-      font-size: 12px;
       text-align: center;
+      font-size: 12px;
     }
 
-    @media (min-width: 720px) {
-      .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,.18); background: rgba(255,255,255,.065); }
+    @media (min-width: 760px) {
+      .page { width: min(100% - 40px, 840px); }
+      .hero { min-height: 680px; }
+      .hero-copy { left: 32px; right: 32px; bottom: 34px; }
+      .intro { padding: 24px; }
+      .bot-body { padding: 22px; }
+      .bot-card:hover { border-color: var(--line-2); }
+      .bot-card:hover .bot-banner img { transform: scale(1.025); }
     }
 
     @media (max-width: 520px) {
-      .app { width: calc(100% - 18px); }
-      .topbar { align-items: flex-start; }
-      .qg { display: none; }
-      .grid { gap: 12px; }
-      .card { border-radius: 16px; }
-      .body { min-height: 172px; padding: 12px; }
-      .name { font-size: 16px; }
-      .desc { font-size: 13px; -webkit-line-clamp: 4; }
+      .page { width: calc(100% - 18px); padding-top: calc(8px + var(--safe-top)); }
+      .wordmark span:last-child { display: none; }
+      .language-button { min-width: 86px; }
+      .hero { min-height: 540px; border-radius: 0 0 20px 20px; }
+      .hero-copy { left: 16px; right: 16px; bottom: 18px; }
+      .intro { padding: 16px; }
+      .section-title { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .bot-body { padding: 16px; }
+      .bot-card p { font-size: 14.5px; }
+      .primary, .secondary { width: 100%; }
     }
   </style>
 </head>
 <body>
-  <main class="app">
+  <main class="page">
     <header class="topbar">
-      <div class="brand">
-        <div class="logo">B</div>
-        <div>
-          <h1>Vitrine Baltigo</h1>
-          <p>Todos os bots em um só lugar</p>
-        </div>
+      <div class="wordmark">
+        <div class="mark">B</div>
+        <span>Universo Baltigo</span>
       </div>
-      <a class="qg" href="https://t.me/QG_BALTIGO" data-link="https://t.me/QG_BALTIGO">⚔️ QG</a>
+      <div class="language" id="language">
+        <button class="language-button" type="button" id="languageButton" aria-haspopup="true" aria-expanded="false"></button>
+        <div class="language-menu" id="languageMenu" role="menu"></div>
+      </div>
     </header>
 
-    <section class="grid" id="botsGrid" aria-label="Bots Baltigo"></section>
-    <p class="footer">Baltigo • Telegram bots</p>
+    <section class="hero">
+      <img src="https://photo.chelpbot.me/AgACAgEAAxkBa-uZq2n-Yf_8WAeP4vx8bAsIcwABppWl4wACwAtrGxRW6UZIISRg5avbBQEAAwIAA3kAAzsE/photo.jpg" alt="" />
+      <div class="hero-copy">
+        <span class="eyebrow" data-i18n="hero.kicker"></span>
+        <h1 data-i18n="hero.title"></h1>
+        <p data-i18n="hero.body"></p>
+      </div>
+    </section>
+
+    <section class="intro" id="intro"></section>
+
+    <div class="section-title">
+      <h2 data-i18n="section.title"></h2>
+      <span data-i18n="section.count"></span>
+    </div>
+
+    <section class="list" id="botsList" aria-label="Bots Baltigo"></section>
+
+    <section class="closing">
+      <h2 data-i18n="closing.title"></h2>
+      <p data-i18n="closing.body"></p>
+      <div class="actions">
+        <a class="secondary" href="https://t.me/QG_BALTIGO" data-link="https://t.me/QG_BALTIGO" data-i18n="closing.cta"></a>
+      </div>
+    </section>
+
+    <p class="footer">Baltigo</p>
   </main>
 
   <script>
@@ -241,98 +443,184 @@
     try {
       tg?.ready();
       tg?.expand();
-      tg?.setHeaderColor?.("#050506");
-      tg?.setBackgroundColor?.("#050506");
+      tg?.setHeaderColor?.("#070708");
+      tg?.setBackgroundColor?.("#070708");
     } catch (error) {}
 
-    function banner(title, icon, from, to, accent) {
-      const safeTitle = title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400">
-          <defs>
-            <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-              <stop stop-color="${from}"/><stop offset="1" stop-color="${to}"/>
-            </linearGradient>
-            <radialGradient id="r" cx=".72" cy=".16" r=".62">
-              <stop stop-color="${accent}" stop-opacity=".95"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/>
-            </radialGradient>
-            <pattern id="p" width="46" height="46" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
-              <path d="M0 23H46" stroke="rgba(255,255,255,.08)" stroke-width="2"/>
-            </pattern>
-          </defs>
-          <rect width="640" height="400" fill="url(#g)"/>
-          <rect width="640" height="400" fill="url(#r)"/>
-          <rect width="640" height="400" fill="url(#p)"/>
-          <circle cx="104" cy="108" r="58" fill="rgba(255,255,255,.16)"/>
-          <text x="104" y="128" text-anchor="middle" font-size="64" font-family="Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji">${icon}</text>
-          <text x="56" y="300" fill="white" font-size="46" font-family="Inter, Arial, sans-serif" font-weight="900">${safeTitle}</text>
-          <text x="58" y="344" fill="rgba(255,255,255,.72)" font-size="22" font-family="Inter, Arial, sans-serif" font-weight="800">BALTIGO</text>
-        </svg>`;
-      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-    }
+    const languages = {
+      pt: { flag: "🇧🇷", label: "PT" },
+      en: { flag: "🇺🇸", label: "EN" },
+      es: { flag: "🇪🇸", label: "ES" }
+    };
+
+    const copy = {
+      pt: {
+        "hero.kicker": "Ecossistema Baltigo",
+        "hero.title": "Existe um ponto em que deixa de ser só um bot.",
+        "hero.body": "A Baltigo reúne experiências para assistir, ler, ouvir, jogar, colecionar e descobrir conteúdo dentro do Telegram, sem perder praticidade.",
+        intro: [
+          "Tem projeto que nasce como um bot. A Baltigo nasceu para ser mais do que isso.",
+          "A ideia sempre foi criar um universo completo dentro do Telegram, onde cada pessoa encontra a porta de entrada que combina com o que gosta.",
+          "Cada bot tem sua própria proposta, mas todos carregam a mesma visão: variedade, descoberta e uma experiência direta, feita para usar sem fricção."
+        ],
+        "section.title": "Portas de entrada",
+        "section.count": "8 experiências",
+        "card.open": "Conhecer bot",
+        "card.channel": "Ver comunidade",
+        "closing.title": "Sempre existe mais para descobrir.",
+        "closing.body": "Não importa se você quer assistir, ler, ouvir, jogar ou colecionar. O ecossistema Baltigo foi feito para sempre ter uma nova porta aberta.",
+        "closing.cta": "Acompanhar novidades no QG"
+      },
+      en: {
+        "hero.kicker": "Baltigo ecosystem",
+        "hero.title": "There is a point where it stops being just a bot.",
+        "hero.body": "Baltigo brings together ways to watch, read, listen, play, collect and discover content inside Telegram, without losing speed or simplicity.",
+        intro: [
+          "Some projects start as a bot. Baltigo was built to become more than that.",
+          "The idea is to create a complete universe inside Telegram, where each person can find the doorway that matches what they love.",
+          "Every bot has its own purpose, but all of them share the same vision: variety, discovery and a direct experience made to be used without friction."
+        ],
+        "section.title": "Entry points",
+        "section.count": "8 experiences",
+        "card.open": "Open bot",
+        "card.channel": "Open community",
+        "closing.title": "There is always more to discover.",
+        "closing.body": "Whether you want to watch, read, listen, play or collect, the Baltigo ecosystem is designed to keep another door open.",
+        "closing.cta": "Follow updates in QG"
+      },
+      es: {
+        "hero.kicker": "Ecosistema Baltigo",
+        "hero.title": "Hay un punto en el que deja de ser solo un bot.",
+        "hero.body": "Baltigo reúne formas de ver, leer, escuchar, jugar, coleccionar y descubrir contenido dentro de Telegram, sin perder practicidad.",
+        intro: [
+          "Hay proyectos que nacen como un bot. Baltigo nació para ser más que eso.",
+          "La idea es crear un universo completo dentro de Telegram, donde cada persona encuentre la puerta que combina con lo que le gusta.",
+          "Cada bot tiene su propia propuesta, pero todos comparten la misma visión: variedad, descubrimiento y una experiencia directa, hecha para usarse sin fricción."
+        ],
+        "section.title": "Puertas de entrada",
+        "section.count": "8 experiencias",
+        "card.open": "Abrir bot",
+        "card.channel": "Ver comunidad",
+        "closing.title": "Siempre hay más por descubrir.",
+        "closing.body": "No importa si quieres ver, leer, escuchar, jugar o coleccionar. El ecosistema Baltigo fue creado para mantener siempre una nueva puerta abierta.",
+        "closing.cta": "Seguir novedades en QG"
+      }
+    };
 
     const bots = [
       {
+        type: "anime",
         name: "Animes Baltigo",
-        icon: "🍥",
+        handle: "@AnimesBaltigo_Bot",
         url: "https://t.me/AnimesBaltigo_Bot",
-        desc: "Animes, episódios, lista completa e download offline quando disponível.",
-        image: banner("Animes", "🍥", "#24101c", "#b31924", "#ffb238")
+        image: "https://photo.chelpbot.me/AgACAgEAAxkBa-umTGn-YrmQP3FG4W-sdiMpK1aRUu7zAALbC2sb2U34R432wPHP8OrAAQADAgADeQADOwQ/photo.jpg",
+        desc: {
+          pt: "Um espaço para mergulhar no mundo dos animes, com milhares de títulos entre obras dubladas, legendadas, clássicos e lançamentos. Ideal para descobrir algo novo ou revisitar aquele anime marcante.",
+          en: "A place to dive into anime, with thousands of titles across dubbed releases, subtitled shows, classics and new episodes. Built for discovering something new or returning to a favorite story.",
+          es: "Un espacio para entrar en el mundo del anime, con miles de títulos entre obras dobladas, subtituladas, clásicos y lanzamientos. Ideal para descubrir algo nuevo o volver a una historia especial."
+        }
       },
       {
+        type: "manga",
         name: "Mangás Baltigo",
-        icon: "📘",
+        handle: "@MangasBaltigo_Bot",
         url: "https://t.me/MangasBaltigo_Bot",
-        desc: "Mangás, manhwas e manhuas com leitura pelo MiniApp.",
-        image: banner("Mangás", "📘", "#101827", "#235a8f", "#7bd5ff")
+        image: "https://photo.chelpbot.me/AgACAgEAAxkBa-uhxmn-Ynl49i4sc-QGdecUy6MivtqbAAJlDGsbr6GIR8U7RAEQqdGuAQADAgADeQADOwQ/photo.jpg",
+        desc: {
+          pt: "Uma biblioteca para quem ama leitura, com mangás, manhwas e manhuas organizados para abrir, acompanhar e continuar pelo MiniApp com rapidez.",
+          en: "A reading library for manga, manhwa and manhua fans, organized so you can open, follow and continue stories quickly through the MiniApp.",
+          es: "Una biblioteca para quienes aman leer manga, manhwa y manhua, organizada para abrir, seguir y continuar historias con rapidez desde el MiniApp."
+        }
       },
       {
-        name: "HQ Baltigo",
-        icon: "📚",
-        url: "https://t.me/HQBaltigoBot",
-        desc: "HQs, quadrinhos, webtoons, favoritos e histórico de leitura.",
-        image: banner("HQs", "📚", "#151116", "#6c1f46", "#ff79b8")
+        type: "hqs",
+        name: "HQs Baltigo",
+        handle: "@hqsbrasilbot",
+        url: "https://t.me/hqsbrasilbot",
+        image: "https://photo.chelpbot.me/AgACAgEAAxkBa-wKPmn-ZprlQctPM-MQNYtBwlJimld5AALfC2sb2U34R-qFUhmN9z82AQADAgADeQADOwQ/photo.jpg",
+        desc: {
+          pt: "O ponto de encontro para fãs de quadrinhos, reunindo HQs, editoras, sagas e histórias para buscar, abrir e continuar no ponto certo.",
+          en: "A meeting point for comic fans, bringing together comics, publishers, sagas and stories to search, open and continue from the right spot.",
+          es: "El punto de encuentro para fans de los cómics, con historietas, editoriales, sagas e historias para buscar, abrir y continuar desde el punto correcto."
+        }
       },
       {
+        type: "novels",
         name: "Novels Baltigo",
-        icon: "📖",
+        handle: "@NovelsBrasil_Bot",
         url: "https://t.me/NovelsBrasil_Bot",
-        desc: "Web novels e light novels com capítulos para ler pelo WebApp.",
-        image: banner("Novels", "📖", "#15130d", "#7b4b19", "#ffd166")
+        image: "https://photo.chelpbot.me/AgACAgEAAxkBa-vIXGn-ZJZw4vhGoVQUxXTaJl6FddVrAALeC2sb2U34RwfLHqIKoHPPAQADAgADeQADOwQ/photo.jpg",
+        desc: {
+          pt: "Para quem gosta de ir além das adaptações e mergulhar nas narrativas de origem. Um bot focado em novels, capítulos e leitura confortável pelo WebApp.",
+          en: "For readers who want to go beyond adaptations and dive into source stories. A bot focused on novels, chapters and comfortable reading through the WebApp.",
+          es: "Para quienes quieren ir más allá de las adaptaciones y entrar en las historias originales. Un bot enfocado en novels, capítulos y lectura cómoda desde el WebApp."
+        }
       },
       {
-        name: "Series Brazil Bot",
-        icon: "🍿",
-        url: "https://t.me/SeriesBrazilBot",
-        desc: "Filmes e séries para buscar, explorar e abrir direto pelo Telegram.",
-        image: banner("Séries", "🍿", "#101014", "#3d2b84", "#b6a7ff")
-      },
-      {
-        name: "Rádio Animes",
-        icon: "🎶",
-        url: "https://t.me/RadioAnimes_Bot",
-        desc: "Openings, endings e temas de anime para ouvir no bot.",
-        image: banner("Rádio", "🎶", "#10151b", "#12615b", "#76ffe8")
-      },
-      {
-        name: "Baixa Aqui",
-        icon: "📥",
-        url: "https://t.me/Baixa_aquibot",
-        desc: "Baixe links, envie mídias, organize arquivos e acompanhe tarefas.",
-        image: banner("Baixa", "📥", "#141414", "#33513f", "#92ffa9")
-      },
-      {
-        name: "QG Baltigo",
-        icon: "⚔️",
+        type: "source",
+        name: "Source Baltigo",
+        handle: "@SourceBaltigo_Bot",
         url: "https://t.me/SourceBaltigo_Bot",
-        desc: "Central da comunidade, cards, jogos e ferramentas do QG.",
-        image: banner("QG", "⚔️", "#15110f", "#7c2416", "#ff8f63")
+        image: "https://photo.chelpbot.me/AgACAgQAAxkBa-u-6mn-ZA0iDIkf3yrNkAyvnl-anRKtAALGDGsbQ3BVUR22L_32q7AbAQADAgADeQADOwQ/photo.jpg",
+        desc: {
+          pt: "A parte mais interativa do universo Baltigo: gacha, coleção de cartas, jogos, desafios e experiências temáticas de anime para participar, evoluir e colecionar.",
+          en: "The most interactive side of Baltigo: gacha, card collecting, games, challenges and anime-themed experiences made to play, progress and collect.",
+          es: "La parte más interactiva del universo Baltigo: gacha, colección de cartas, juegos, desafíos y experiencias de anime para participar, avanzar y coleccionar."
+        }
+      },
+      {
+        type: "radio",
+        name: "Rádio Animes",
+        handle: "@RadioAnimes_Bot",
+        url: "https://t.me/RadioAnimes_Bot",
+        image: "https://photo.chelpbot.me/AgACAgEAAxkBa-uer2n-YkOx_c7E6edZNq5gcFb9oC3eAAIcDGsbjonxRu9aubnT6Bk0AQADAgADdwADOwQ/photo.jpg",
+        desc: {
+          pt: "Para quem sente que anime também se vive pela música. Ouça openings, endings e temas marcantes direto no Telegram, de forma simples e rápida.",
+          en: "For those who feel anime also lives through music. Listen to openings, endings and memorable themes straight from Telegram, quickly and simply.",
+          es: "Para quienes sienten que el anime también se vive por la música. Escucha openings, endings y temas memorables directamente desde Telegram."
+        }
+      },
+      {
+        type: "series",
+        name: "Series Brazil Bot",
+        handle: "@SeriesBrazilBot",
+        url: "https://t.me/SeriesBrazilBot",
+        image: "https://photo.chelpbot.me/AgACAgEAAxkBa-u4XWn-Y7X_fc6oA5DyoV_r5I-Ndl1kAALdC2sb2U34R8E6ElaxXE1YAQADAgADeQADOwQ/photo.jpg",
+        desc: {
+          pt: "Um catálogo amplo para quem quer variedade de entretenimento: filmes, séries, desenhos, animes, doramas, live actions e muito mais em uma navegação prática.",
+          en: "A broad catalog for entertainment variety: movies, series, cartoons, anime, dramas, live actions and more in a practical browsing experience.",
+          es: "Un catálogo amplio para quien busca variedad: películas, series, dibujos, anime, doramas, live actions y mucho más en una navegación práctica."
+        }
+      },
+      {
+        type: "download",
+        name: "Baixa Aqui",
+        handle: "@Baixa_aquibot",
+        url: "https://t.me/Baixa_aquibot",
+        image: "https://photo.chelpbot.me/AgACAgEAAxkBa-wWUmn-ZxC0PcVCR7H0MzIQBWHNBuSmAALgC2sb2U34Rw9ZH6RnNX6PAQADAgADeQADOwQ/photo.jpg",
+        desc: {
+          pt: "Uma ferramenta prática para enviar links, processar arquivos, baixar mídias e organizar tarefas direto pelo Telegram, com foco em agilidade e controle.",
+          en: "A practical tool for sending links, processing files, downloading media and organizing tasks directly through Telegram, focused on speed and control.",
+          es: "Una herramienta práctica para enviar links, procesar archivos, descargar medios y organizar tareas directamente desde Telegram, con foco en agilidad y control."
+        }
       }
     ];
 
-    const grid = document.getElementById("botsGrid");
+    const state = {
+      lang: localStorage.getItem("baltigo:ecosystem:lang") || "pt"
+    };
 
-    function openBot(url) {
+    const languageRoot = document.getElementById("language");
+    const languageButton = document.getElementById("languageButton");
+    const languageMenu = document.getElementById("languageMenu");
+    const intro = document.getElementById("intro");
+    const botsList = document.getElementById("botsList");
+
+    function t(key) {
+      return copy[state.lang][key] || copy.pt[key] || key;
+    }
+
+    function openTelegram(url) {
       try {
         if (tg?.openTelegramLink) {
           tg.openTelegramLink(url);
@@ -342,30 +630,78 @@
       window.open(url, "_blank", "noopener");
     }
 
-    grid.innerHTML = bots.map((bot, index) => `
-      <button class="card" type="button" data-index="${index}" aria-label="Abrir ${bot.name}">
-        <div class="visual"><img src="${bot.image}" alt="" loading="lazy"></div>
-        <div class="body">
-          <h2 class="name"><span class="tag">${bot.icon}</span><span>${bot.name}</span></h2>
-          <p class="desc">${bot.desc}</p>
-          <span class="open">Abrir bot</span>
-        </div>
-      </button>
-    `).join("");
+    function renderLanguage() {
+      const current = languages[state.lang] || languages.pt;
+      languageButton.innerHTML = `<span>${current.flag}</span><span>${current.label}</span>`;
+      languageButton.setAttribute("aria-expanded", languageRoot.classList.contains("open") ? "true" : "false");
+      languageMenu.innerHTML = Object.entries(languages).map(([code, item]) => `
+        <button type="button" class="${code === state.lang ? "active" : ""}" data-lang="${code}">
+          ${item.flag} ${item.label}
+        </button>
+      `).join("");
+    }
 
-    grid.addEventListener("click", (event) => {
-      const card = event.target.closest(".card");
-      if (!card) return;
-      const bot = bots[Number(card.dataset.index)];
-      if (bot) openBot(bot.url);
-    });
-
-    document.querySelectorAll("[data-link]").forEach((link) => {
-      link.addEventListener("click", (event) => {
-        event.preventDefault();
-        openBot(link.dataset.link);
+    function renderText() {
+      document.documentElement.lang = state.lang === "pt" ? "pt-BR" : state.lang;
+      document.querySelectorAll("[data-i18n]").forEach((node) => {
+        node.textContent = t(node.dataset.i18n);
       });
+      intro.innerHTML = copy[state.lang].intro.map((line) => `<p>${line}</p>`).join("");
+    }
+
+    function renderBots() {
+      botsList.innerHTML = bots.map((bot, index) => `
+        <article class="bot-card">
+          <div class="bot-banner">
+            <img src="${bot.image}" alt="${bot.name}" loading="${index < 2 ? "eager" : "lazy"}">
+          </div>
+          <div class="bot-body">
+            <div class="meta">
+              <span>${bot.type}</span>
+              <span class="handle">${bot.handle}</span>
+            </div>
+            <h3>${bot.name}</h3>
+            <p>${bot.desc[state.lang] || bot.desc.pt}</p>
+            <div class="actions">
+              <a class="primary" href="${bot.url}" data-link="${bot.url}">${t("card.open")}</a>
+            </div>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function render() {
+      renderLanguage();
+      renderText();
+      renderBots();
+    }
+
+    languageButton.addEventListener("click", () => {
+      languageRoot.classList.toggle("open");
+      languageButton.setAttribute("aria-expanded", languageRoot.classList.contains("open") ? "true" : "false");
     });
+
+    languageMenu.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-lang]");
+      if (!button) return;
+      state.lang = button.dataset.lang;
+      localStorage.setItem("baltigo:ecosystem:lang", state.lang);
+      languageRoot.classList.remove("open");
+      render();
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!languageRoot.contains(event.target)) {
+        languageRoot.classList.remove("open");
+        languageButton.setAttribute("aria-expanded", "false");
+      }
+      const link = event.target.closest("[data-link]");
+      if (!link) return;
+      event.preventDefault();
+      openTelegram(link.dataset.link);
+    });
+
+    render();
   </script>
 </body>
 </html>

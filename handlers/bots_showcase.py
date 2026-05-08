@@ -19,7 +19,7 @@ def bots_showcase_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 InlineKeyboardButton(
-                    "🧭 Abrir vitrine Baltigo",
+                    "Abrir Universo Baltigo",
                     web_app=WebAppInfo(url=bots_webapp_url()),
                 )
             ]
@@ -35,8 +35,8 @@ async def bots_showcase(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     first_name = user.first_name if user and user.first_name else "otaku"
     text = (
-        f"🧭 <b>Vitrine Baltigo</b>\n\n"
-        f"{first_name}, veja os bots da rede Baltigo em um só lugar."
+        f"<b>Universo Baltigo</b>\n\n"
+        f"{first_name}, conheça o ecossistema de bots Baltigo dentro do Telegram."
     )
 
     await message.reply_text(

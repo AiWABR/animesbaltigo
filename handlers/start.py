@@ -1266,7 +1266,7 @@ async def start(update, context):
                 ],
                 [
                     InlineKeyboardButton(
-                        "🧭 Bots Baltigo",
+                        "Universo Baltigo",
                         web_app=WebAppInfo(url=bots_webapp_url())
                     )
                 ],
