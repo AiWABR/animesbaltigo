@@ -33,7 +33,7 @@ def _clean_anime_title(title: str) -> str:
     return re.sub(r"\s*-\s*Epis[oó]dio\s*\d+", "", title, flags=re.IGNORECASE)
 
 
-BANNER_URL = "https://photo.chelpbot.me/AgACAgEAAxkBZ987imm1UGdjCzV5n7FN2F6Ayew0umj2AAJkC2sbJAWhRWilm7WSjeD5AQADAgADeQADOgQ/photo.jpg"
+BANNER_URL = "https://photo.chelpbot.me/AgACAgEAAxkBa-umTGn-YrmQP3FG4W-sdiMpK1aRUu7zAALbC2sb2U34R432wPHP8OrAAQADAgADeQADOwQ/photo.jpg"
 MINIAPP_URL = "https://rough-double-remarkable-north.trycloudflare.com/miniapp/index.html"
 
 START_COOLDOWN = 1.2
@@ -1266,12 +1266,6 @@ async def start(update, context):
                 ],
                 [
                     InlineKeyboardButton(
-                        "Universo Baltigo",
-                        web_app=WebAppInfo(url=bots_webapp_url())
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
                         "➕ Adicionar ao grupo",
                         url=f"https://t.me/{BOT_USERNAME}?startgroup=true"
                     )
@@ -1280,6 +1274,12 @@ async def start(update, context):
                     InlineKeyboardButton(
                         "🏴‍☠️ QG Baltigo",
                         url="https://t.me/QG_BALTIGO"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "⚔️ Universo Baltigo",
+                        web_app=WebAppInfo(url=bots_webapp_url())
                     )
                 ]
             ])
