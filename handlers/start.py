@@ -1246,15 +1246,14 @@ async def start(update, context):
                     )
                     return
 
+            first_name = html.escape(user.first_name or "otaku")
             text = (
-                f"🎬 <b>Bem-vindo ao {BOT_BRAND}!</b>\n\n"
-                "Aqui você pode encontrar animes de forma rápida, direto no Telegram.\n\n"
-                "✨ <b>O que você pode fazer aqui:</b>\n\n"
-                "• 🔎 Buscar qualquer anime\n"
-                "• 📺 Navegar pelos episódios\n"
-                "• ✅ Marcar episódios como vistos\n"
-                "• ⚡ Assistir rápido e sem complicação\n\n"
-                "Use <code>/buscar</code> para começar."
+                f"🍥 <b>Bem-vindo ao {html.escape(BOT_BRAND)}, {first_name}!</b>\n\n"
+                "Encontre animes, abra episódios e assista direto pelo bot.\n\n"
+                "<blockquote>• 🔎 Busque qualquer anime\n"
+                "• 📺 Navegue pela lista de episódios\n"
+                "• 📥 Baixe para assistir offline quando disponível</blockquote>\n\n"
+                "<i>Use <code>/buscar</code> para começar.</i>"
             )
 
             keyboard = InlineKeyboardMarkup([
