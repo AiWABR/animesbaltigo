@@ -1248,12 +1248,13 @@ async def start(update, context):
 
             first_name = html.escape(user.first_name or "otaku")
             text = (
-                f"🍥 <b>Bem-vindo ao {html.escape(BOT_BRAND)}, {first_name}!</b>\n\n"
-                "Encontre animes, abra episódios e assista direto pelo bot.\n\n"
+                f"🍥 <b>Bem-vindo ao Animes Baltigo Bot, {first_name}!</b>\n\n"
+                "Aqui você pode encontrar seus animes favoritos, abrir episódios rapidamente e assistir sem sair do bot.\n\n"
+                "<b>✨ O que você pode fazer aqui:</b>\n\n"
                 "<blockquote>• 🔎 Busque qualquer anime\n"
                 "• 📺 Navegue pela lista de episódios\n"
                 "• 📥 Baixe para assistir offline quando disponível</blockquote>\n\n"
-                "<i>Use <code>/buscar</code> para começar.</i>"
+                "<i>Use <code>/buscar</code> para começar sua jornada.</i>"
             )
 
             keyboard = InlineKeyboardMarkup([
