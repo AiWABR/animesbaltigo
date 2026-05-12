@@ -6,10 +6,10 @@ import traceback
 import inspect
 from urllib.parse import quote_plus
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update, WebAppInfo
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
 from telegram.ext import ContextTypes
 
-from config import ADMIN_IDS
+from config import ADMIN_IDS, BOT_USERNAME, MINIAPP_SHORT_NAME
 from core.video_download_queue import VideoDownloadJob, enqueue_video_download
 from handlers.offline_paywall import answer_subscription_check, send_offline_paywall
 from services.animefire_client import (
@@ -907,7 +907,7 @@ def _single_anime_keyboard(
         [
             InlineKeyboardButton(
                 "📺 Ver episódios",
-                web_app=WebAppInfo(url=_build_miniapp_anime_url(anime_id)),
+                url=_build_miniapp_anime_direct_url(anime_id),
             )
         ]
     ]
@@ -952,7 +952,7 @@ def _variant_keyboard(
         rows.append([
             InlineKeyboardButton(
                 "🇯🇵 Legendado",
-                web_app=WebAppInfo(url=_build_miniapp_anime_url(sub_variant["id"])),
+                url=_build_miniapp_anime_direct_url(sub_variant["id"]),
             )
         ])
 
@@ -960,7 +960,7 @@ def _variant_keyboard(
         rows.append([
             InlineKeyboardButton(
                 "🇧🇷 Dublado",
-                web_app=WebAppInfo(url=_build_miniapp_anime_url(dub_variant["id"])),
+                url=_build_miniapp_anime_direct_url(dub_variant["id"]),
             )
         ])
 
@@ -987,7 +987,7 @@ def _variant_keyboard(
         rows.append([
             InlineKeyboardButton(
                 "📺 Ver episódios",
-                web_app=WebAppInfo(url=_build_miniapp_anime_url(default_id)),
+                url=_build_miniapp_anime_direct_url(default_id),
             )
         ])
 
@@ -1539,6 +1539,25 @@ def _build_miniapp_anime_url(anime_id: str) -> str:
     return f"{base}/?anime={anime_id}"
 
 
+def _build_miniapp_direct_url(start_param: str = "") -> str:
+    username = BOT_USERNAME.lstrip("@")
+    app_name = MINIAPP_SHORT_NAME.strip().strip("/")
+    base = f"https://t.me/{username}/{app_name}" if app_name else f"https://t.me/{username}"
+    params = []
+    if start_param:
+        params.append(f"startapp={quote_plus(start_param)}")
+    params.append("mode=fullscreen")
+    return f"{base}?{'&'.join(params)}"
+
+
+def _build_miniapp_anime_direct_url(anime_id: str) -> str:
+    return _build_miniapp_direct_url(f"anime_{anime_id}")
+
+
+def _build_miniapp_episode_direct_url(anime_id: str, episode: str, quality: str) -> str:
+    return _build_miniapp_direct_url(f"ep_{anime_id}__{episode}__{_normalize_quality(quality)}")
+
+
 def _player_keyboard(
     anime_id: str,
     episode: str,
@@ -1583,7 +1602,7 @@ def _player_keyboard(
         [
             InlineKeyboardButton(
                 "▶️ Assistir",
-                web_app=WebAppInfo(url=miniapp_episode_url),
+                url=_build_miniapp_episode_direct_url(anime_id, str(episode), selected_quality),
             )
         ],
         [InlineKeyboardButton("\U0001f4e5 Baixar offline", callback_data=f"dl|{anime_id}|{episode}")],
@@ -2622,7 +2641,7 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     selected_quality = _get_selected_quality(context, anime_id, episode)
                     player = await _get_cached_player(anime_id, episode, selected_quality)
                     video_url = (player.get("video") or "").strip()
-                    miniapp_url = _build_miniapp_episode_url(anime_id, episode, selected_quality)
+                    miniapp_url = _build_miniapp_episode_direct_url(anime_id, episode, selected_quality)
 
                     _safe_log_event(
                         event_type="watch_click",

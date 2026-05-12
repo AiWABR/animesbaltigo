@@ -734,6 +734,30 @@
 
     document.getElementById("globalSearch").onsubmit=e=>{ e.preventDefault(); runSearch(searchInput.value); searchInput.blur(); };
     searchInput.addEventListener("input",()=>{ clearTimeout(searchTimer); const q=searchInput.value; if(text(q).length>=3) searchTimer=setTimeout(()=>runSearch(q),650); });
+    function telegramStartParam(){
+      const qs = new URLSearchParams(location.search || "");
+      return text(tgApp?.initDataUnsafe?.start_param || qs.get("tgWebAppStartParam") || "");
+    }
+    function bootTelegramStartParam(param){
+      param = text(param);
+      if(!param) return false;
+      if(param.startsWith("ep_") && param.includes("__")){
+        const raw = param.slice(3);
+        const parts = raw.split("__");
+        const animeId = parts[0] || "";
+        const episode = parts[1] || "";
+        if(animeId && episode){ openPlayer(animeId, episode); return true; }
+      }
+      if(param.startsWith("anime_al_")){
+        openAnime(param.slice(9));
+        return true;
+      }
+      if(param.startsWith("anime_")){
+        openAnime(param.slice(6));
+        return true;
+      }
+      return false;
+    }
     function boot(){
       const h=decodeURIComponent(location.hash||"");
       let m=h.match(/^#anime\/(.+)$/); if(m)return openAnime(m[1]);
@@ -742,6 +766,7 @@
       m=h.match(/^#search\/([^/]+)\/?(\d+)?$/); if(m)return runSearch(m[1],+(m[2]||1));
       if(h==="#history")return showHistory();
       if(h==="#favorites")return showFavorites();
+      if(bootTelegramStartParam(telegramStartParam())) return;
       const qs = new URLSearchParams(location.search || "");
       const anime = qs.get("anime") || qs.get("anime_id") || qs.get("id");
       const episode = qs.get("episode") || qs.get("ep");
