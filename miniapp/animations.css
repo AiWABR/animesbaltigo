@@ -1,0 +1,184 @@
+:root{
+  --duration-fast:150ms;
+  --duration-normal:250ms;
+  --duration-slow:400ms;
+  --ease-out:cubic-bezier(0,0,.2,1);
+  --ease-in-out:cubic-bezier(.4,0,.2,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --color-primary:var(--brand,#ff412e);
+  --color-primary-glow:rgba(255,65,46,.4);
+}
+
+@keyframes splashLogoIn{from{opacity:0;transform:scale(.82) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes splashGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(255,65,46,0))}50%{filter:drop-shadow(0 0 22px rgba(255,65,46,.6))}}
+@keyframes splashOut{to{opacity:0;visibility:hidden}}
+@keyframes pageIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes headerDrop{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes navRise{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes titleSlide{from{opacity:0;transform:translateX(-15px)}to{opacity:1;transform:translateX(0)}}
+@keyframes heroEnter{from{opacity:0}to{opacity:1}}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@keyframes ripple{to{transform:scale(1);opacity:0}}
+@keyframes brandPulse{0%,100%{box-shadow:0 12px 34px rgba(255,65,46,.23)}50%{box-shadow:0 12px 40px rgba(255,65,46,.44)}}
+@keyframes activeIconBounce{0%,100%{transform:translateY(-2px) scale(1.08)}50%{transform:translateY(-3px) scale(1.18)}}
+@keyframes searchSpin{to{transform:rotate(360deg) scale(1.08)}}
+@keyframes emptyShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@keyframes pageExitLeft{to{opacity:0;transform:translateX(-10px)}}
+
+#splashScreen{
+  position:fixed;
+  inset:0;
+  z-index:12000;
+  display:grid;
+  place-items:center;
+  background:#000;
+  pointer-events:none;
+  opacity:1;
+}
+.splash-inner{
+  display:grid;
+  place-items:center;
+  gap:18px;
+  animation:splashLogoIn 800ms var(--ease-out) both;
+  will-change:transform,opacity,filter;
+}
+.splash-brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-weight:900;
+  text-transform:uppercase;
+  font-size:clamp(28px,8vw,48px);
+  letter-spacing:0;
+  animation:splashGlow 520ms ease-in-out 800ms 3 both;
+}
+.splash-brand span{color:var(--brand)}
+.splash-brand .splash-mark{color:#fff}
+.splash-mark{
+  width:52px;
+  height:52px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(145deg,#ff4b35,#bd130d);
+  color:#fff;
+  box-shadow:0 16px 44px rgba(255,65,46,.28);
+}
+.splash-bar{
+  width:160px;
+  height:3px;
+  border-radius:999px;
+  overflow:hidden;
+  background:#151518;
+}
+.splash-bar::before{
+  content:"";
+  display:block;
+  width:45%;
+  height:100%;
+  border-radius:inherit;
+  background:linear-gradient(90deg,transparent,var(--brand),transparent);
+  animation:shimmer 1.2s ease-in-out infinite;
+}
+.splash-hidden{animation:splashOut 500ms ease both}
+
+.app-header{will-change:transform,opacity,box-shadow,backdrop-filter;animation:headerDrop 420ms var(--ease-out) 100ms both}
+.nav-icons,.bottom-nav,.mobile-tabs .rail{will-change:transform,opacity;animation:navRise 430ms var(--ease-out) 200ms both}
+.section-title,.list-page-head h1{will-change:transform,opacity;animation:titleSlide 420ms var(--ease-out) 300ms both}
+.app-header.header-scrolled{background:rgba(0,0,0,.78);backdrop-filter:blur(18px);box-shadow:0 8px calc(18px + var(--scroll-shadow,0px)) rgba(0,0,0,.62)}
+.app-header.header-scrolled .brand-name{font-size:23px;transition:font-size var(--duration-normal) var(--ease-out)}
+
+.anim-page-in{animation:pageIn 350ms cubic-bezier(.22,1,.36,1) both;will-change:transform,opacity}
+.page-exit{animation:pageExitLeft 150ms var(--ease-in-out) both;pointer-events:none}
+.page-enter{animation:pageIn 300ms var(--ease-out) both}
+.reveal-item{opacity:0;transform:translateY(15px);will-change:transform,opacity}
+.reveal-item.is-visible{opacity:1;transform:translateY(0);transition:opacity 360ms var(--ease-out),transform 360ms var(--ease-out)}
+
+.grid .card{
+  opacity:0;
+  transform:translateY(16px);
+  transition:opacity 380ms cubic-bezier(.22,1,.36,1),transform 380ms cubic-bezier(.22,1,.36,1),border-color 200ms ease,background 200ms ease,box-shadow 200ms ease;
+  transition-delay:calc(var(--i,0) * 55ms);
+  will-change:transform,opacity;
+}
+.grid .card.card-visible{opacity:1;transform:translateY(0)}
+.card{transition:transform 200ms cubic-bezier(.22,1,.36,1),border-color 200ms ease,background 200ms ease,box-shadow 200ms ease}
+.card:hover{transform:translateY(-4px) scale(1.015);border-color:#2e2e32;background:#0e0e10;box-shadow:0 14px 40px rgba(255,65,46,.18)}
+.card:active,.card.card-press{transform:translateY(-1px) scale(.985);transition-duration:80ms}
+
+.thumb img,.image-box img{
+  filter:blur(10px);
+  transform:scale(1.1);
+  transition:filter 420ms ease,transform 420ms ease,opacity 200ms ease;
+  will-change:filter,transform,opacity;
+}
+.thumb.loaded img,.image-box.loaded img{filter:blur(0);transform:scale(1)}
+.sk-card,.thumb::before,.image-box::before,.skeleton{
+  background:linear-gradient(100deg,#0d0d0e 0%,#1a1a1d 40%,#252528 50%,#1a1a1d 60%,#0d0d0e 100%);
+  background-size:200% 100%;
+  animation:shimmer 1.6s ease-in-out infinite;
+}
+
+.hero-enter{animation:heroEnter 600ms ease both}
+.hero-body{transition:opacity 400ms ease,transform 400ms cubic-bezier(.22,1,.36,1)}
+.hero-enter .hero-body{animation:pageIn 600ms 200ms cubic-bezier(.22,1,.36,1) both}
+.hero-title{animation:pageIn 600ms 300ms cubic-bezier(.22,1,.36,1) both}
+.hero-arrow{transition:background 180ms ease,transform 180ms ease,box-shadow 180ms ease;will-change:transform}
+.hero-arrow:hover{background:var(--brand);transform:scale(1.08);box-shadow:0 0 20px rgba(255,65,46,.5)}
+.hero-arrow:active{transform:scale(.94)}
+.dot{transition:width 280ms cubic-bezier(.22,1,.36,1),background 280ms ease}
+
+.search{transition:transform 300ms var(--ease-out),background 200ms ease,border-color 200ms ease,box-shadow 200ms ease;will-change:transform}
+.search:focus-within{transform:scaleX(1.015);background:#151518;border-color:rgba(255,65,46,.5);box-shadow:0 0 0 3px rgba(255,65,46,.12)}
+.search i{transition:color 200ms ease,transform 300ms var(--ease-out)}
+.search:focus-within i{color:var(--brand);animation:searchSpin 520ms var(--ease-out) both}
+.search input::placeholder{transition:opacity 180ms ease}
+.search:focus-within input::placeholder{opacity:.25}
+
+.btn,.round,.icon-btn,.view-btn,.tab-btn,.fs-action,.fs-close{position:relative;overflow:hidden}
+.btn{transition:filter 160ms ease,transform 160ms ease,box-shadow 160ms ease;will-change:transform}
+.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn:active{transform:scale(.97) translateY(0);transition-duration:70ms}
+.btn.primary:hover{box-shadow:0 6px 20px rgba(255,65,46,.35)}
+
+.nav-icons,.bottom-nav,.mobile-tabs .rail{position:relative}
+.nav-indicator{
+  position:absolute;
+  z-index:0;
+  left:var(--nav-left,0px);
+  top:var(--nav-top,0px);
+  width:var(--nav-width,0px);
+  height:var(--nav-height,0px);
+  border-radius:14px;
+  background:rgba(255,65,46,.14);
+  opacity:var(--nav-opacity,0);
+  transition:left 250ms var(--ease-in-out),top 250ms var(--ease-in-out),width 250ms var(--ease-in-out),height 250ms var(--ease-in-out),opacity 180ms ease;
+  pointer-events:none;
+}
+.bottom-nav button,.tab-btn,.round{z-index:1;transition:color 200ms ease,background 200ms ease,transform 200ms ease}
+.bottom-nav button.active,.tab-btn.active,.round.active{color:#fff}
+.bottom-nav button i,.tab-btn i,.round i{transition:transform 250ms var(--ease-spring)}
+.bottom-nav button.active i,.tab-btn.active i,.round.active i{animation:activeIconBounce 300ms var(--ease-spring) both}
+.tab-btn:active{transform:scale(.94)}
+
+.section-title::before{transition:height 300ms cubic-bezier(.22,1,.36,1)}
+.section:hover .section-title::before{height:28px}
+.ep-card{transition:background 160ms ease,border-color 160ms ease,transform 160ms ease;will-change:transform}
+.ep-card:hover{background:#050506;border-color:#1f1f22;transform:translateX(3px)}
+.ep-card:active{transform:translateX(1px) scale(.99)}
+.switch{transition:background 220ms ease;cursor:pointer}
+.switch::after{transition:transform 220ms var(--ease-spring)}
+.bar-fill{transition:width 900ms cubic-bezier(.22,1,.36,1)}
+.brand-mark{animation:brandPulse 3.5s ease-in-out infinite}
+.spinner{animation:spin .65s cubic-bezier(.4,0,.2,1) infinite}
+.empty i,.empty .fa-solid{animation:emptyShake 900ms ease-in-out 2}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+  #splashScreen{display:none!important}
+  .grid .card,.reveal-item,.anim-page-in{opacity:1!important;transform:none!important}
+}

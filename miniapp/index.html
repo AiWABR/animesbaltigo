@@ -128,23 +128,6 @@
     .player-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}.player-nav .btn{width:100%;padding:0 10px}.fs-exit{display:none}.fs-overlay{display:none}
     body.force-fullscreen{overflow:hidden}.force-fullscreen .app-header,.force-fullscreen .bottom-nav,.force-fullscreen .side-list,.force-fullscreen .player-info{display:none!important}.force-fullscreen .page,.force-fullscreen .shell,.force-fullscreen .player-grid,.force-fullscreen .watchbox{display:block!important;width:100%!important;height:100dvh!important;padding:0!important;margin:0!important;border:0!important;border-radius:0!important}.force-fullscreen .video-wrap{position:fixed!important;inset:0!important;z-index:9999!important;width:100vw!important;height:100dvh!important;aspect-ratio:auto!important;border-radius:0!important;background:#000!important}.force-fullscreen .video-wrap video,.force-fullscreen .video-wrap iframe{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain}.fs-touch-zone{display:none}.force-fullscreen .video-wrap:not(.fs-controls-visible) .fs-touch-zone{display:block;position:absolute;inset:0;z-index:10000;background:transparent}.force-fullscreen .fs-overlay{position:absolute;inset:0;z-index:10001;display:block;opacity:0;pointer-events:none;transition:opacity 180ms ease;background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0) 26%,rgba(0,0,0,0) 70%,rgba(0,0,0,.62))}.force-fullscreen .video-wrap.fs-controls-visible .fs-overlay{opacity:1;pointer-events:auto}.fs-top{position:absolute;left:calc(14px + env(safe-area-inset-left,0px));top:calc(12px + var(--safe-top));display:flex;align-items:center;gap:8px}.fs-close{min-height:42px;border-radius:999px;background:rgba(16,16,18,.78);backdrop-filter:blur(14px);display:inline-flex;align-items:center;gap:9px;padding:0 15px;font-weight:900}.fs-close i{font-size:24px}.fs-bottom{position:absolute;left:0;right:0;bottom:calc(0px + var(--safe-bottom));display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(255,255,255,.18);border-bottom:1px solid rgba(255,255,255,.06);background:rgba(5,5,6,.78);backdrop-filter:blur(16px)}.fs-action{min-height:48px;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:900;color:#f5f5f7;border-right:1px solid rgba(255,255,255,.18)}.fs-action:last-child{border-right:0}.fs-action:disabled{opacity:.42;cursor:default}
     .side-list{border:1px solid #17171a;border-radius:10px;background:#050506;max-height:calc(100dvh - 130px);overflow:auto}.side-head{position:sticky;top:0;background:#0c0c0e;padding:14px;border-bottom:1px solid #17171a;font-weight:900}.side-ep{display:grid;grid-template-columns:82px minmax(0,1fr);gap:12px;padding:10px;border-bottom:1px solid #111;align-items:center;text-align:left;width:100%}.side-ep.active{background:rgba(255,65,46,.1);color:#ffb1a9}.side-thumb{height:46px;border-radius:6px;background:#111;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}.side-copy{min-width:0;display:block}.side-title{display:block;font-size:12px;font-weight:900;line-height:1.25}.side-name{display:block;margin-top:3px;font-size:12px;color:#bdbdc5;line-height:1.35}
-
-    @keyframes pageIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}@keyframes heroEnter{from{opacity:0}to{opacity:1}}@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}@keyframes ripple{to{transform:scale(1);opacity:0}}@keyframes brandPulse{0%,100%{box-shadow:0 12px 34px rgba(255,65,46,.23)}50%{box-shadow:0 12px 40px rgba(255,65,46,.44)}}
-    .anim-page-in{animation:pageIn 350ms cubic-bezier(.22,1,.36,1) both}
-    .grid .card{opacity:0;transform:translateY(16px);transition:opacity 380ms cubic-bezier(.22,1,.36,1),transform 380ms cubic-bezier(.22,1,.36,1),border-color 200ms ease,background 200ms ease,box-shadow 200ms ease;transition-delay:calc(var(--i,0) * 55ms)}.grid .card.card-visible{opacity:1;transform:translateY(0)}
-    .card{transition:transform 200ms cubic-bezier(.22,1,.36,1),border-color 200ms ease,background 200ms ease,box-shadow 200ms ease}.card:hover{transform:translateY(-4px) scale(1.015);border-color:#2e2e32;background:#0e0e10;box-shadow:0 14px 40px rgba(255,65,46,.18)}.card:active{transform:translateY(-1px) scale(.985);transition-duration:80ms}
-    .thumb img{filter:blur(8px);transform:scale(1.06);transition:filter 420ms ease,transform 420ms ease,opacity 200ms ease}.thumb.loaded img,.image-box.loaded img{filter:blur(0);transform:scale(1)}
-    .sk-card,.thumb::before,.image-box::before{background:linear-gradient(100deg,#0d0d0e 0%,#1a1a1d 40%,#252528 50%,#1a1a1d 60%,#0d0d0e 100%);background-size:200% 100%;animation:shimmer 1.6s ease-in-out infinite}
-    .hero-enter{animation:heroEnter 600ms ease both}.hero-body{transition:opacity 400ms ease,transform 400ms cubic-bezier(.22,1,.36,1)}.hero-enter .hero-body{animation:pageIn 600ms 200ms cubic-bezier(.22,1,.36,1) both}.hero-title{animation:pageIn 600ms 300ms cubic-bezier(.22,1,.36,1) both}
-    .hero-arrow{transition:background 180ms ease,transform 180ms ease,box-shadow 180ms ease}.hero-arrow:hover{background:var(--brand);transform:scale(1.08);box-shadow:0 0 20px rgba(255,65,46,.5)}.hero-arrow:active{transform:scale(.94)}.dot{transition:width 280ms cubic-bezier(.22,1,.36,1),background 280ms ease}
-    .search{transition:background 200ms ease,border-color 200ms ease,box-shadow 200ms ease}.search:focus-within{background:#151518;border-color:rgba(255,65,46,.5);box-shadow:0 0 0 3px rgba(255,65,46,.12)}.search i{transition:color 200ms ease,transform 200ms ease}.search:focus-within i{color:var(--brand);transform:scale(1.1)}
-    .btn{transition:filter 160ms ease,transform 160ms ease,box-shadow 160ms ease;position:relative;overflow:hidden}.btn:hover{filter:brightness(1.1);transform:translateY(-1px)}.btn:active{transform:scale(.96) translateY(0);transition-duration:70ms}.btn.primary:hover{box-shadow:0 6px 20px rgba(255,65,46,.35)}
-    .bottom-nav button{transition:color 200ms ease,background 200ms ease,transform 200ms ease}.bottom-nav button.active{color:#fff;background:rgba(255,65,46,.14)}.bottom-nav button i{transition:transform 250ms cubic-bezier(.34,1.56,.64,1)}.bottom-nav button.active i{transform:translateY(-2px) scale(1.18)}
-    .tab-btn{transition:background 180ms ease,border-color 180ms ease,color 180ms ease,transform 180ms ease}.tab-btn:active{transform:scale(.94)}.section-title::before{transition:height 300ms cubic-bezier(.22,1,.36,1)}.section:hover .section-title::before{height:28px}
-    .ep-card{transition:background 160ms ease,border-color 160ms ease,transform 160ms ease}.ep-card:hover{background:#050506;border-color:#1f1f22;transform:translateX(3px)}.ep-card:active{transform:translateX(1px) scale(.99)}.switch{transition:background 220ms ease;cursor:pointer}.switch::after{transition:transform 220ms cubic-bezier(.34,1.56,.64,1)}
-    .brand-mark{animation:brandPulse 3.5s ease-in-out infinite}.app-header{transition:box-shadow 300ms ease}.app-header.header-scrolled{box-shadow:0 4px 30px rgba(0,0,0,.6)}.spinner{animation:spin .65s cubic-bezier(.4,0,.2,1) infinite}
-    .round,.icon-btn,.view-btn,.fs-action,.fs-close{position:relative;overflow:hidden}
-
     @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
     @media (max-width:980px){
       :root{--header:84px}.shell{width:min(100% - 24px,var(--max))}
@@ -162,8 +145,15 @@
       .player-title{font-size:18px}.side-list{max-height:none}.list-page-head{display:block}.list-page-head>.btn,.list-page-head>.actions{display:none}.pager .btn{flex:1}
     }
   </style>
+  <link rel="stylesheet" href="./animations.css" />
 </head>
 <body>
+  <div id="splashScreen" aria-hidden="true">
+    <div class="splash-inner">
+      <div class="splash-brand"><span class="splash-mark">B</span> Animes <span>Baltigo</span></div>
+      <div class="splash-bar"></div>
+    </div>
+  </div>
   <header class="app-header">
     <div class="shell nav">
       <a class="brand" href="#home" aria-label="Animes Baltigo">
@@ -189,6 +179,7 @@
   <main id="app"></main>
   <nav class="bottom-nav" id="bottomNav" aria-label="Navegação mobile"></nav>
 
+  <script src="./animations.js"></script>
   <script>
     const TG_FULLSCREEN_VERSION = "8.0";
     const tgApp = window.Telegram?.WebApp || null;
@@ -396,12 +387,7 @@
       stopHero();
       app.innerHTML = `<section class="${cls}"><div class="shell">${html}</div></section>`;
       window.scrollTo({top:0,behavior:"instant"});
-      requestAnimationFrame(() => {
-        app.querySelectorAll(".page > .shell > *").forEach((el, i) => {
-          el.style.animationDelay = `${i * 60}ms`;
-          el.classList.add("anim-page-in");
-        });
-      });
+      window.BaltigoAnimations?.page?.(app);
     }
     function loading(label="Carregando"){ mount(`<div class="loading"><span class="spinner"></span><div>${esc(label)}</div></div>`); }
     function errorBox(title,msg,action=`<button class="btn primary" onclick="showHome()">Voltar ao início</button>`){ return `<div class="error"><h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="actions" style="justify-content:center">${action}</div></div>`; }
@@ -421,10 +407,6 @@
       const src = imgUrl(item);
       const proxy = src.startsWith("http") ? `/api/image-proxy?url=${encodeURIComponent(src)}` : "";
       return `<img src="${esc(proxy || src)}" data-direct="${esc(proxy ? src : "")}" alt="${esc(item.title)}" onload="imgReveal(this)" onerror="imageFail(this)"><span class="fallback-logo">Baltigo</span>`;
-    }
-    function imgReveal(el){
-      el.parentElement.classList.add("loaded");
-      el.classList.add("img-reveal");
     }
     function imageFail(el){
       if (el.classList.contains("hero-img") && heroItems.length > 1) {
@@ -543,7 +525,7 @@
       }).join("");
       if(fav.length) html += sectionHtml("Favoritos", fav.slice(0,12), "anime", "showFavorites()");
       document.getElementById("homeSections").innerHTML = html || emptyBox("Catálogo vazio","Nenhuma seção disponível no momento.");
-      animateCards();
+      window.animateCards?.();
     }
     function sectionHtml(title,items,kind,action){ return `<section class="section"><div class="section-head"><h2 class="section-title">${esc(title)}</h2><button class="section-action" onclick="${action}">Ver tudo</button></div><div class="grid ${kind==="episode"?"wide":""}">${items.map(i=>card(i,kind)).join("")}</div></section>`; }
 
@@ -583,7 +565,7 @@
       const goNext = type==="search" ? `runSearch('${esc(key)}',${next})` : `openSection('${esc(key)}',${next})`;
       const content = state.items.length ? `<div class="grid">${state.items.map(i=>card(i)).join("")}</div><div class="pager">${state.page>1?`<button class="btn ghost small" onclick="${goPrev}">Anterior</button>`:""}<span class="page-indicator">Página ${state.page||1}${payload.total_pages?` de ${payload.total_pages}`:""}</span>${!state.done?`<button class="btn ghost small" onclick="${goNext}">Próxima</button><button class="btn primary small" onclick="${loadMore}">Carregar mais</button>`:""}</div>` : emptyBox(type==="search"?"Nenhum resultado":"Lista vazia", type==="search"?"Tente outro termo de busca.":"Essa seção não retornou itens agora.");
       mount(`<div class="list-page-head"><h1 class="section-title">${esc(state.title)}</h1><button class="btn ghost small" onclick="showHome()">Início</button></div>${content}`);
-      animateCards();
+      window.animateCards?.();
     }
 
     async function openAnime(animeId){
@@ -643,18 +625,8 @@
         <div class="seg" aria-label="Modo de visualização"><button data-view="grid" class="${currentView==="grid"?"active":""}"><i class="fa-solid fa-table-cells"></i></button><button data-view="compact" class="${currentView==="compact"?"active":""}"><i class="fa-solid fa-list"></i></button><button data-view="list" class="${currentView==="list"?"active":""}"><i class="fa-solid fa-bars"></i></button></div>
       </div><div class="ep-layout"><nav class="seasons">${seasons.map(s=>`<button class="season-btn ${+s===+currentSeason?"active":""}" data-season="${s}">${s}º Temporada</button>`).join("")}</nav><div id="episodesMount"></div></div></section>`);
       bindEpisodeControls(); renderEpisodes();
-      animateCounters();
-      requestAnimationFrame(() => {
-        const fill = document.querySelector(".bar-fill");
-        if(fill){
-          const target = fill.style.width;
-          fill.style.width = "0";
-          setTimeout(() => {
-            fill.style.transition = "width 900ms cubic-bezier(0.22, 1, 0.36, 1)";
-            fill.style.width = target;
-          }, 300);
-        }
-      });
+      window.animateCounters?.();
+      window.BaltigoAnimations?.progress?.();
     }
     function stat(label,value){
       value = useful(value);
@@ -800,67 +772,13 @@
     function getFavorites(){ return favStore().sort((a,b)=>(b.saved_at||0)-(a.saved_at||0)); }
     function isFavorite(id){ return favStore().some(f=>f.id===id); }
     function toggleFavoriteCurrent(){ if(!currentAnime)return; const list=favStore(); const idx=list.findIndex(f=>f.id===currentAnime.id); if(idx>=0) list.splice(idx,1); else list.unshift({id:currentAnime.id,title:currentAnime.title,cover_url:imgUrl(currentAnime),banner_url:imgUrl(currentAnime),is_dubbed:isDub(currentAnime),saved_at:Date.now()}); localStorage.setItem("baltigo:favorites",JSON.stringify(list.slice(0,200))); renderAnime(); }
-    function showFavorites(){ setActiveNav("favorites"); history.replaceState(null,"","#favorites"); const items=getFavorites(); mount(`<div class="list-page-head"><h1 class="section-title">Favoritos</h1><button class="btn ghost small" onclick="showHome()">Início</button></div>${items.length?`<div class="grid">${items.map(i=>card(i)).join("")}</div>`:emptyBox("Nenhum favorito ainda","Use o botão Favoritar na página do anime.")}`); animateCards(); }
+    function showFavorites(){ setActiveNav("favorites"); history.replaceState(null,"","#favorites"); const items=getFavorites(); mount(`<div class="list-page-head"><h1 class="section-title">Favoritos</h1><button class="btn ghost small" onclick="showHome()">Início</button></div>${items.length?`<div class="grid">${items.map(i=>card(i)).join("")}</div>`:emptyBox("Nenhum favorito ainda","Use o botão Favoritar na página do anime.")}`); window.animateCards?.(); }
     function getHistory(){ return JSON.parse(localStorage.getItem("baltigo:history")||"[]").sort((a,b)=>(b.last_at||0)-(a.last_at||0)); }
     function saveHistory(anime,ep,item,progress=0,duration=0){ const list=getHistory().filter(h=>!(h.anime_id===anime.id && h.episode===epKey(ep))); list.unshift({anime_id:anime.id,title:anime.title,cover_url:imgUrl(anime),is_dubbed:isDub(anime),episode:epKey(ep),episode_number:epNo(ep),season:seasonOf(ep),episode_title:ep.title||item.title||"",progress,duration,last_at:Date.now()}); localStorage.setItem("baltigo:history",JSON.stringify(list.slice(0,80))); }
     function historyCard(h){ return `<article class="card" onclick="openPlayer('${esc(h.anime_id)}','${esc(h.episode)}')">${imageTag(h,h.title,true)}${h.is_dubbed?`<span class="badge">DUB</span>`:""}<span class="ep-badge">${esc(formatEp(h))}</span><div class="card-body"><div class="card-title">${esc(h.title)}</div><div class="card-meta">${esc(h.episode_title || "Continuar episódio")}</div></div></article>`; }
-    function showHistory(){ setActiveNav("history"); history.replaceState(null,"","#history"); const items=getHistory(); mount(`<div class="list-page-head"><h1 class="section-title">Histórico</h1><div class="actions">${items.length?`<button class="btn danger small" onclick="clearHistory()">Limpar histórico</button>`:""}<button class="btn ghost small" onclick="showHome()">Início</button></div></div>${items.length?`<div class="grid wide">${items.map(historyCard).join("")}</div>`:emptyBox("Sem histórico","Abra um episódio para continuar assistindo depois.")}`); animateCards(); }
+    function showHistory(){ setActiveNav("history"); history.replaceState(null,"","#history"); const items=getHistory(); mount(`<div class="list-page-head"><h1 class="section-title">Histórico</h1><div class="actions">${items.length?`<button class="btn danger small" onclick="clearHistory()">Limpar histórico</button>`:""}<button class="btn ghost small" onclick="showHome()">Início</button></div></div>${items.length?`<div class="grid wide">${items.map(historyCard).join("")}</div>`:emptyBox("Sem histórico","Abra um episódio para continuar assistindo depois.")}`); window.animateCards?.(); }
     function clearHistory(){ if(confirm("Limpar todo o histórico de episódios assistidos?")){ localStorage.removeItem("baltigo:history"); showHistory(); } }
 
-    function animateCards(){
-      const cards = document.querySelectorAll(".grid .card");
-      if(!cards.length) return;
-      if(!("IntersectionObserver" in window)){
-        cards.forEach(card => card.classList.add("card-visible"));
-        return;
-      }
-      const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if(entry.isIntersecting){
-            entry.target.classList.add("card-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      }, {threshold:0.08});
-      cards.forEach((card, i) => {
-        card.style.setProperty("--i", Math.min(i, 10));
-        observer.observe(card);
-      });
-    }
-    function animateCounters(){
-      document.querySelectorAll(".stat-value").forEach(el => {
-        const raw = el.textContent.trim();
-        const num = parseInt(raw.replace(/\D/g,""), 10);
-        if(!num || num < 2 || el.dataset.counted === "1") return;
-        el.dataset.counted = "1";
-        const suffix = raw.replace(/[\d,]/g,"");
-        let start = null;
-        const duration = 900;
-        const easeOut = t => 1 - Math.pow(1 - t, 3);
-        const step = ts => {
-          if(!start) start = ts;
-          const progress = Math.min((ts - start) / duration, 1);
-          el.textContent = Math.round(easeOut(progress) * num) + suffix;
-          if(progress < 1) requestAnimationFrame(step);
-        };
-        requestAnimationFrame(step);
-      });
-    }
-    document.addEventListener("click", e => {
-      const btn = e.target.closest(".btn, .round, .icon-btn, .view-btn, .fs-action, .fs-close");
-      if(!btn || getComputedStyle(btn).position === "static") return;
-      const r = document.createElement("span");
-      const rect = btn.getBoundingClientRect();
-      const size = Math.max(rect.width, rect.height) * 1.6;
-      r.style.cssText = `position:absolute;border-radius:50%;pointer-events:none;width:${size}px;height:${size}px;left:${e.clientX - rect.left - size/2}px;top:${e.clientY - rect.top - size/2}px;background:rgba(255,255,255,0.15);transform:scale(0);animation:ripple 500ms ease-out forwards;`;
-      btn.appendChild(r);
-      setTimeout(() => r.remove(), 520);
-    });
-    window.addEventListener("scroll", () => {
-      const header = document.querySelector(".app-header");
-      if(!header) return;
-      header.classList.toggle("header-scrolled", window.scrollY > 20);
-    }, {passive:true});
     document.addEventListener("fullscreenchange", () => {
       if(!document.fullscreenElement) exitForcedFullscreen();
     });
@@ -913,7 +831,7 @@
       showHome();
     }
     window.addEventListener("hashchange",boot);
-    Object.assign(window,{showHome,openAnime,openPlayer,openSection,runSearch,showHistory,showFavorites,clearHistory,toggleFavoriteCurrent,toggleSynopsis,openTrailer,setHero,toggleEpisodeWatched,playerFailed,enterFullscreen,exitForcedFullscreen,requestTelegramFullscreen,exitTelegramFullscreen,imgReveal});
+    Object.assign(window,{showHome,openAnime,openPlayer,openSection,runSearch,showHistory,showFavorites,clearHistory,toggleFavoriteCurrent,toggleSynopsis,openTrailer,setHero,toggleEpisodeWatched,playerFailed,enterFullscreen,exitForcedFullscreen,requestTelegramFullscreen,exitTelegramFullscreen,imgReveal:window.imgReveal});
     initTelegramWebApp();
     boot();
   </script>
