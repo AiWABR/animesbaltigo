@@ -81,7 +81,7 @@ VIDEO_DOWNLOAD_PROTECT_CONTENT = os.getenv("VIDEO_DOWNLOAD_PROTECT_CONTENT", "1"
 
 BOT_BRAND = os.getenv("BOT_BRAND", os.getenv("OT_BRAND", "Anime Brasil")).strip()
 WEBAPP_BASE_URL = os.getenv("WEBAPP_BASE_URL", "").strip().rstrip("/")
-MINIAPP_SHORT_NAME = os.getenv("MINIAPP_SHORT_NAME", "animesbaltigo").strip().strip("/")
+MINIAPP_SHORT_NAME = os.getenv("MINIAPP_SHORT_NAME", "").strip().strip("/")
 _SUBSCRIPTIONS_DB_RAW = Path(
     os.getenv("SUBSCRIPTIONS_DB_PATH", "").strip()
     or os.getenv("BALTIGO_SUBSCRIPTIONS_DB_PATH", "").strip()

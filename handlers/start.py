@@ -450,7 +450,9 @@ def _build_miniapp_anime_url(anime_id: str) -> str:
 def _build_miniapp_direct_url(start_param: str = "") -> str:
     username = BOT_USERNAME.lstrip("@")
     app_name = MINIAPP_SHORT_NAME.strip().strip("/")
-    base = f"https://t.me/{username}/{app_name}" if app_name else f"https://t.me/{username}"
+    if not app_name:
+        return ""
+    base = f"https://t.me/{username}/{app_name}"
     params = []
     if start_param:
         params.append(f"startapp={quote_plus(start_param)}")
@@ -464,6 +466,20 @@ def _build_miniapp_anime_direct_url(anime_id: str) -> str:
 
 def _build_miniapp_episode_direct_url(anime_id: str, episode: str, quality: str) -> str:
     return _build_miniapp_direct_url(f"ep_{anime_id}__{episode}__{_normalize_quality(quality)}")
+
+
+def _miniapp_anime_button(text: str, anime_id: str) -> InlineKeyboardButton:
+    direct_url = _build_miniapp_anime_direct_url(anime_id)
+    if direct_url:
+        return InlineKeyboardButton(text, url=direct_url)
+    return InlineKeyboardButton(text, web_app=WebAppInfo(url=_build_miniapp_anime_url(anime_id)))
+
+
+def _miniapp_episode_button(text: str, anime_id: str, episode: str, quality: str) -> InlineKeyboardButton:
+    direct_url = _build_miniapp_episode_direct_url(anime_id, episode, quality)
+    if direct_url:
+        return InlineKeyboardButton(text, url=direct_url)
+    return InlineKeyboardButton(text, web_app=WebAppInfo(url=_build_miniapp_episode_url(anime_id, episode, quality)))
 
 
 def _player_keyboard(
@@ -508,10 +524,7 @@ def _player_keyboard(
 
     rows = [
         [
-            InlineKeyboardButton(
-                "▶️ Assistir",
-                url=_build_miniapp_episode_direct_url(anime_id, str(episode), selected_quality),
-            )
+            _miniapp_episode_button("▶️ Assistir", anime_id, str(episode), selected_quality)
         ],
         [InlineKeyboardButton("\U0001f4e5 Baixar offline", callback_data=f"dl|{anime_id}|{episode}")],
         [watch_toggle_button],
@@ -604,10 +617,7 @@ def _single_anime_keyboard(
 ) -> InlineKeyboardMarkup:
     rows = [
         [
-            InlineKeyboardButton(
-                "📺 Ver episódios",
-                 url=_build_miniapp_anime_direct_url(anime_id)
-            )
+            _miniapp_anime_button("📺 Ver episódios", anime_id)
         ]
     ]
 
@@ -648,14 +658,8 @@ def _variant_keyboard(
 
             if sub_variant and dub_variant:
                 rows.append([
-                    InlineKeyboardButton(
-                        f"T{season_number:02d} 🇯🇵",
-                        url=_build_miniapp_anime_direct_url(sub_variant["id"])
-                    ),
-                    InlineKeyboardButton(
-                        f"T{season_number:02d} 🇧🇷",
-                        url=_build_miniapp_anime_direct_url(dub_variant["id"])
-                    ),
+                    _miniapp_anime_button(f"T{season_number:02d} 🇯🇵", sub_variant["id"]),
+                    _miniapp_anime_button(f"T{season_number:02d} 🇧🇷", dub_variant["id"]),
                 ])
             else:
                 variant = sub_variant or dub_variant or (season_variants[0] if season_variants else None)
@@ -664,10 +668,7 @@ def _variant_keyboard(
                     if variant.get("is_dubbed"):
                         label += " 🇧🇷"
                     rows.append([
-                        InlineKeyboardButton(
-                            label,
-                            url=_build_miniapp_anime_direct_url(variant["id"])
-                        )
+                        _miniapp_anime_button(label, variant["id"])
                     ])
 
         default_id = group_item.get("default_anime_id") or group_item.get("id")
@@ -697,18 +698,12 @@ def _variant_keyboard(
 
     if sub_variant:
         rows.append([
-            InlineKeyboardButton(
-                "🇯🇵 Legendado",
-                url=_build_miniapp_anime_direct_url(sub_variant["id"])
-            )
+            _miniapp_anime_button("🇯🇵 Legendado", sub_variant["id"])
         ])
 
     if dub_variant:
         rows.append([
-            InlineKeyboardButton(
-                "🇧🇷 Dublado",
-                url=_build_miniapp_anime_direct_url(dub_variant["id"])
-            )
+            _miniapp_anime_button("🇧🇷 Dublado", dub_variant["id"])
         ])
 
     default_id = group_item.get("default_anime_id") or group_item.get("id")
@@ -733,10 +728,7 @@ def _variant_keyboard(
     if not rows:
         default_id = group_item.get("default_anime_id") or group_item.get("id")
         rows.append([
-            InlineKeyboardButton(
-                "📺 Ver episódios",
-                 url=_build_miniapp_anime_direct_url(default_id)
-            )
+            _miniapp_anime_button("📺 Ver episódios", default_id)
         ])
 
     return InlineKeyboardMarkup(rows)

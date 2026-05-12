@@ -11,7 +11,9 @@ MINIAPP_URL = "https://alberta-utah-living-home.trycloudflare.com/miniapp/index.
 def _miniapp_fullscreen_url(start_param: str = "") -> str:
     username = BOT_USERNAME.lstrip("@")
     app_name = MINIAPP_SHORT_NAME.strip().strip("/")
-    base = f"https://t.me/{username}/{app_name}" if app_name else f"https://t.me/{username}"
+    if not app_name:
+        return ""
+    base = f"https://t.me/{username}/{app_name}"
     params = []
     if start_param:
         params.append(f"startapp={quote_plus(start_param)}")
@@ -28,22 +30,17 @@ async def testminiapp(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     first_name = user.first_name if user and user.first_name else "pirata"
 
-    keyboard = InlineKeyboardMarkup(
-        [
-            [
-                InlineKeyboardButton(
-                    text="📱 Abrir sem barra",
-                    url=_miniapp_fullscreen_url(),
-                )
-            ],
-            [
-                InlineKeyboardButton(
-                    text="Abrir compatível",
-                    web_app=WebAppInfo(url=MINIAPP_URL),
-                )
-            ]
-        ]
-    )
+    rows = []
+    fullscreen_url = _miniapp_fullscreen_url()
+    if fullscreen_url:
+        rows.append([InlineKeyboardButton(text="📱 Abrir sem barra", url=fullscreen_url)])
+    rows.append([
+        InlineKeyboardButton(
+            text="📱 Abrir Mini App",
+            web_app=WebAppInfo(url=MINIAPP_URL),
+        )
+    ])
+    keyboard = InlineKeyboardMarkup(rows)
 
     text = (
         f"🎌 <b>Baltigo Mini App</b>\n\n"
