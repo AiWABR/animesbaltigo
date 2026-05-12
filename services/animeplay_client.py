@@ -978,7 +978,10 @@ def _extract_direct_url(embed_url: str) -> str:
 
 
 def _is_direct_video_url(url: str) -> bool:
-    return bool(re.search(r"\.(?:mp4|m3u8|webm)(?:\?|$)", str(url or ""), re.I))
+    value = str(url or "")
+    if re.search(r"\.(?:mp4|m3u8|webm)(?:\?|$)", value, re.I):
+        return True
+    return bool(re.search(r"(?:^https?://[^/]*googlevideo\.com/|/)(?:videoplayback)(?:\?|$)", value, re.I))
 
 
 def _make_absolute_url(url: str, base_url: str) -> str:
@@ -1039,8 +1042,10 @@ def _extract_direct_video_urls(page_html: str, base_url: str = "") -> list[str]:
         candidates.append(value)
 
     patterns = [
+        r'https?://[^\s"\'<>\\]*googlevideo\.com/videoplayback[^\s"\'<>\\]*',
         r'https?://[^\s"\'<>\\]+\.m3u8(?:\?[^\s"\'<>\\]*)?',
         r'https?://[^\s"\'<>\\]+\.mp4(?:\?[^\s"\'<>\\]*)?',
+        r'https?:\\/\\/[^\s"\'<>]*googlevideo\.com\\/videoplayback[^\s"\'<>]*',
         r'https?:\\/\\/[^\s"\'<>]+\.m3u8(?:\?[^\s"\'<>]*)?',
         r'https?:\\/\\/[^\s"\'<>]+\.mp4(?:\?[^\s"\'<>]*)?',
     ]
@@ -1048,14 +1053,15 @@ def _extract_direct_video_urls(page_html: str, base_url: str = "") -> list[str]:
         for match in re.findall(pattern, page_html or "", flags=re.I):
             push(match)
 
-    soup = BeautifulSoup(page_html or "", "html.parser")
-    for tag in soup.find_all(["video", "source"]):
-        for attr in ("src", "data-src", "data-video-src"):
-            push(tag.get(attr) or "")
+    if "<" in (page_html or ""):
+        soup = BeautifulSoup(page_html or "", "html.parser")
+        for tag in soup.find_all(["video", "source"]):
+            for attr in ("src", "data-src", "data-video-src"):
+                push(tag.get(attr) or "")
 
     for pattern in (
-        r'''["'](?:file|src|video|stream|url|hls|playlist)["']\s*:\s*["']([^"']+)["']''',
-        r"""(?:file|src|video|stream|url|hls|playlist)\s*=\s*["']([^"']+)["']""",
+        r'''["'](?:file|src|video|stream|url|hls|playlist|play_url)["']\s*:\s*["']([^"']+)["']''',
+        r"""(?:file|src|video|stream|url|hls|playlist|play_url)\s*=\s*["']([^"']+)["']""",
     ):
         for match in re.findall(pattern, page_html or "", flags=re.I):
             push(match)
@@ -1165,6 +1171,7 @@ async def _video_url_looks_playable(url: str, referer: str = "") -> bool:
 
 async def _resolve_player_options(post_id: str, episode_url: str, options: list[dict]) -> dict[str, str]:
     videos = {}
+    fallback_embeds = {}
     ordered_options = sorted(options, key=lambda item: 0 if int(item.get("nume") or 0) == 2 else int(item.get("nume") or 99))
     for option in ordered_options:
         try:
@@ -1200,7 +1207,11 @@ async def _resolve_player_options(post_id: str, episode_url: str, options: list[
             quality = _quality_from_label_or_url(label, direct_url)
             videos.setdefault(quality, direct_url)
 
-    return videos
+        if not direct_urls and embed_url and embed_url.startswith(("http://", "https://")):
+            quality = _quality_from_label_or_url(label, embed_url)
+            fallback_embeds.setdefault(quality, embed_url)
+
+    return videos or fallback_embeds
 
 
 async def get_episode_player(anime_id: str, episode: str, preferred_quality: str = "HD"):
