@@ -232,8 +232,32 @@ async def get_proxy_client() -> httpx.AsyncClient:
 # HELPERS
 # =============================================================================
 
+_MOJIBAKE_MAP = {
+    "\u00c3\u00a1": "á", "\u00c3\u00a0": "à", "\u00c3\u00a2": "â", "\u00c3\u00a3": "ã", "\u00c3\u00a4": "ä",
+    "\u00c3\u00a9": "é", "\u00c3\u00aa": "ê", "\u00c3\u00a8": "è",
+    "\u00c3\u00ad": "í", "\u00c3\u00ac": "ì",
+    "\u00c3\u00b3": "ó", "\u00c3\u00b4": "ô", "\u00c3\u00b5": "õ", "\u00c3\u00b2": "ò",
+    "\u00c3\u00ba": "ú", "\u00c3\u00bc": "ü", "\u00c3\u00b9": "ù",
+    "\u00c3\u00a7": "ç", "\u00c3\u0087": "Ç",
+    "\u00c3\u0081": "Á", "\u00c3\u0089": "É", "\u00c3\u008d": "Í", "\u00c3\u0093": "Ó", "\u00c3\u009a": "Ú",
+    "\u00c2\u00ba": "º", "\u00c2\u00aa": "ª", "\u00c2\u00b7": "·", "\u00c2": "",
+}
+
+
+def _repair_text(text: str) -> str:
+    for bad, good in _MOJIBAKE_MAP.items():
+        text = text.replace(bad, good)
+    return text
+
+
 def _clean(text: str) -> str:
-    return re.sub(r"\s+", " ", (text or "")).strip()
+    text = str(text or "")
+    if "\u00c3" in text or "\u00c2" in text:
+        try:
+            text = text.encode("latin-1").decode("utf-8")
+        except UnicodeError:
+            text = _repair_text(text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def _is_admin_user(user_id: str | int | None) -> bool:
@@ -749,10 +773,56 @@ async def _enrich_animeplay_home_cards(raw_items: list[dict[str, Any]], section:
     return shaped_items
 
 
+async def _prefer_cached_detail_images(items: list[dict[str, Any]], limit: int = 36) -> list[dict[str, Any]]:
+    if not items:
+        return items
+
+    selected: list[tuple[int, dict[str, Any]]] = []
+    seen: set[str] = set()
+    for index, item in enumerate(items):
+        anime_id = item.get("anime_id") or item.get("default_anime_id") or item.get("id") or ""
+        if not anime_id or anime_id in seen:
+            continue
+        seen.add(anime_id)
+        selected.append((index, item))
+        if len(selected) >= limit:
+            break
+
+    sem = asyncio.Semaphore(6)
+
+    async def enrich(index: int, item: dict[str, Any]):
+        anime_id = item.get("anime_id") or item.get("default_anime_id") or item.get("id") or ""
+        try:
+            async with sem:
+                details = await asyncio.wait_for(get_anime_details(anime_id), timeout=8)
+        except Exception:
+            return
+        shaped = _shape_details(details or {}, anime_id)
+        if shaped.get("cover_url"):
+            item["cover_url"] = shaped["cover_url"]
+            item["media_image_url"] = shaped["cover_url"]
+            item["image_url"] = shaped["cover_url"]
+        if shaped.get("banner_url"):
+            item["banner_url"] = shaped["banner_url"]
+            item["backdrop_url"] = shaped["banner_url"]
+        if shaped.get("studio"):
+            item["studio"] = shaped["studio"]
+        if shaped.get("score"):
+            item["score"] = shaped["score"]
+        if shaped.get("genres"):
+            item["genres"] = shaped["genres"]
+
+    await asyncio.gather(*(enrich(index, item) for index, item in selected), return_exceptions=True)
+    return items
+
+
 def _shape_details(data: dict, fallback_id: str = "") -> dict:
     anime_id = data.get("id") or fallback_id
     title = data.get("title") or anime_id.replace("-", " ").title()
     dubbed = bool(data.get("is_dubbed")) or _is_dubbed(anime_id, title)
+    studio = _clean(data.get("studio") or "")
+    if studio.lower() == "animeplay":
+        studio = ""
     return {
         "id": anime_id,
         "title": title,
@@ -780,7 +850,7 @@ def _shape_details(data: dict, fallback_id: str = "") -> dict:
         "season": data.get("season") or "",
         "seasons": data.get("seasons") or [],
         "duration": data.get("duration") or "",
-        "studio": _clean(data.get("studio") or ""),
+        "studio": studio,
         "anilist_url": data.get("anilist_url") or "",
         "anilist_id": data.get("anilist_id"),
         "anilist_title": _clean(data.get("anilist_title") or ""),
@@ -1007,7 +1077,11 @@ async def _build_featured_payload() -> dict[str, Any] | None:
                 continue
             seen.add(anime_id)
             if _is_animeplay_source():
-                shaped = _shape_details(candidate, anime_id)
+                try:
+                    details = await asyncio.wait_for(get_anime_details(anime_id), timeout=8)
+                except Exception:
+                    details = candidate
+                shaped = _shape_details(details or candidate, anime_id)
                 if shaped.get("cover_url") or shaped.get("banner_url"):
                     return {
                         **shaped,
@@ -1357,6 +1431,10 @@ async def catalog_home():
             })
 
     featured = None if isinstance(featured_result, Exception) else featured_result
+    home_items: list[dict[str, Any]] = []
+    for section_payload in payload:
+        home_items.extend(section_payload.get("items") or [])
+    await _prefer_cached_detail_images(home_items, limit=36)
     return {"ok": True, "featured": featured, "sections": payload}
 
 
@@ -2006,7 +2084,7 @@ async def proxy_stream(
 @app.get("/api/image-proxy")
 async def image_proxy(url: str = Query(..., min_length=1)):
     if not url.lower().startswith(("http://", "https://")):
-        raise HTTPException(status_code=400, detail="URL de imagem invÃ¡lida")
+        raise HTTPException(status_code=400, detail="URL de imagem inválida")
 
     client = await get_http_client()
     try:

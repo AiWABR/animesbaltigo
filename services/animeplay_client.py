@@ -62,13 +62,32 @@ def _cache_get_stale(cache: dict, key: str):
     return item["data"] if item else None
 
 
+_MOJIBAKE_MAP = {
+    "\u00c3\u00a1": "á", "\u00c3\u00a0": "à", "\u00c3\u00a2": "â", "\u00c3\u00a3": "ã", "\u00c3\u00a4": "ä",
+    "\u00c3\u00a9": "é", "\u00c3\u00aa": "ê", "\u00c3\u00a8": "è",
+    "\u00c3\u00ad": "í", "\u00c3\u00ac": "ì",
+    "\u00c3\u00b3": "ó", "\u00c3\u00b4": "ô", "\u00c3\u00b5": "õ", "\u00c3\u00b2": "ò",
+    "\u00c3\u00ba": "ú", "\u00c3\u00bc": "ü", "\u00c3\u00b9": "ù",
+    "\u00c3\u00a7": "ç", "\u00c3\u0087": "Ç",
+    "\u00c3\u0081": "Á", "\u00c3\u0089": "É", "\u00c3\u008d": "Í", "\u00c3\u0093": "Ó", "\u00c3\u009a": "Ú",
+    "\u00c2\u00ba": "º", "\u00c2\u00aa": "ª", "\u00c2\u00b7": "·", "\u00c2": "",
+}
+
+
+def _repair_text(value: str) -> str:
+    text = value
+    for bad, good in _MOJIBAKE_MAP.items():
+        text = text.replace(bad, good)
+    return text
+
+
 def _clean(value: str | None) -> str:
     text = html.unescape(str(value or ""))
-    if "Ã" in text:
+    if "\u00c3" in text or "\u00c2" in text:
         try:
             text = text.encode("latin-1").decode("utf-8")
         except UnicodeError:
-            pass
+            text = _repair_text(text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
@@ -539,6 +558,7 @@ def _merge_anilist_data(local_data: dict, anilist_data: dict | None) -> dict:
         "format",
         "season",
         "season_year",
+        "studio",
         "anilist_id",
         "anilist_url",
         "title_romaji",
@@ -879,7 +899,7 @@ async def get_anime_details(anime_id: str):
     if h1:
         title = _clean(h1.get_text(" ", strip=True))
         title = re.sub(r"^Home\s+Animes\s+", "", title, flags=re.I)
-    title = title or _clean_title_from_page(_meta_content(soup, "og:title")) or anime_id.replace("-", " ").title()
+    title = _clean_variant_title(title or _clean_title_from_page(_meta_content(soup, "og:title")) or anime_id.replace("-", " ").title())
     cover = _meta_content(soup, "og:image")
     description = _parse_description(soup)
     episodes = _parse_episodes_from_detail(soup, anime_id)
@@ -917,7 +937,7 @@ async def get_anime_details(anime_id: str):
         "season": "",
         "season_year": year,
         "genres": _parse_genres(soup),
-        "studio": "AnimePlay",
+        "studio": "",
         "source": "animeplay",
         "seasons": sorted({int(item.get("season") or 1) for item in episodes}) or [1],
         "is_dubbed": _is_dubbed(title, anime_id),

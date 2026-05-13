@@ -1,4 +1,4 @@
-﻿
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -134,6 +134,7 @@
     .empty,.error{border:1px solid #1a1a1d;background:#070708;border-radius:10px;padding:34px 18px;text-align:center;color:#c8c8d0}.error{border-color:#361714;background:#120504}.empty h3,.error h3{font-size:18px;margin-bottom:8px;color:#fff}
     .loading{display:flex;align-items:center;justify-content:center;min-height:calc(100dvh - var(--header) - 110px);padding:34px 0;color:#c9c9d1;font-weight:900;text-align:center}
     .loading-stack{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:min(78vw,320px)}
+    .loading.anim-page-in{animation:none!important;transform:none!important;opacity:1!important}
     .spinner{width:30px;height:30px;border-radius:50%;border:3px solid #28282d;border-top-color:var(--brand);animation:spin .8s linear infinite;margin:0}
     .loading.catalog-loading{color:#f3f3f5}
     .loading-line{position:relative;width:min(48vw,260px);height:4px;border-radius:999px;background:#17171a;overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.035)}
@@ -329,8 +330,12 @@
     }
     function text(value=""){
       let out = String(value ?? "");
-      if (/[ÃƒÃ‚Ã…]/.test(out)) {
-        try { out = decodeURIComponent(escape(out)); } catch(e) {}
+      for (let i=0; i<3 && /[\u00c3\u00c2\u00c5]/.test(out); i++) {
+        try {
+          const fixed = decodeURIComponent(escape(out));
+          if (!fixed || fixed === out) break;
+          out = fixed;
+        } catch(e) { break; }
       }
       return out.replace(/\s+/g," ").trim();
     }
@@ -386,11 +391,18 @@
       const raw = text(value);
       return raw && !/^(n\/a|na|none|null|-|undefined)$/i.test(raw) ? raw : "";
     }
+    function displayScore(value){
+      const raw = useful(value);
+      if(!raw) return "";
+      const n = Number(String(raw).replace(",", ".").match(/\d+(?:\.\d+)?/)?.[0] || "");
+      if(Number.isFinite(n) && n > 10) return (n / 10).toFixed(1).replace(".0", "") + "/10";
+      return raw.includes("/") ? raw : raw + "/10";
+    }
     function epRef(value){ const raw = String(value || ""); let m = raw.match(/^S?(\d+)E(\d+)$/i); if (m) return {season:+m[1], episode:+m[2]}; m = raw.match(/^(\d+)-season-(\d+)-episode$/i); if (m) return {season:+m[1], episode:+m[2]}; m = raw.match(/\d+/); return {season:1, episode:m ? +m[0] : 1}; }
     function seasonOf(ep){ return +(ep?.season || epRef(ep?.episode).season || 1); }
     function epNo(ep){ return +(ep?.episode_number || epRef(ep?.episode).episode || ep?.number || 1); }
     function epKey(ep){ return ep?.episode || `S${seasonOf(ep)}E${epNo(ep)}`; }
-    function epLabel(ep){ return ep?.episode_label || `${epNo(ep)}Âº EpisÃ³dio`; }
+    function epLabel(ep){ return ep?.episode_label || `${epNo(ep)}º Episódio`; }
     function sectionMap(sections){ if (!Array.isArray(sections)) return sections || {}; return sections.reduce((a,s)=>{ if(s?.key) a[s.key]=s; return a; },{}); }
 
     async function api(path, opts={}){
@@ -416,14 +428,14 @@
       window.BaltigoAnimations?.page?.(app);
     }
     function loading(label="Carregando"){
-      const isCatalog = /cat[aÃ¡]logo/i.test(label);
+      const isCatalog = /cat[aá]logo/i.test(label);
       if(isCatalog){
         mount(`<div class="loading catalog-loading"><div class="loading-stack"><div class="wordmark loading-wordmark" role="img" aria-label="Animes Baltigo Streaming">ANIMES<span>BALTIGO</span></div><span class="loading-line" aria-hidden="true"></span><div class="loading-label">${esc(label)}</div></div></div>`);
         return;
       }
       mount(`<div class="loading"><div class="loading-stack"><span class="spinner" aria-hidden="true"></span><div class="loading-label">${esc(label)}</div></div></div>`);
     }
-    function errorBox(title,msg,action=`<button class="btn primary" onclick="showHome()">Voltar ao inÃ­cio</button>`){ return `<div class="error"><h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="actions" style="justify-content:center">${action}</div></div>`; }
+    function errorBox(title,msg,action=`<button class="btn primary" onclick="showHome()">Voltar ao início</button>`){ return `<div class="error"><h3>${esc(title)}</h3><p>${esc(msg)}</p><div class="actions" style="justify-content:center">${action}</div></div>`; }
     function emptyBox(title,msg="",action=""){ return `<div class="empty"><h3>${esc(title)}</h3>${msg?`<p>${esc(msg)}</p>`:""}${action?`<div class="actions" style="justify-content:center">${action}</div>`:""}</div>`; }
 
     function imageTag(item, alt, wide=false){
@@ -434,7 +446,7 @@
     function thumbImg(item, fallbackItem, alt){
       const src = bestImage(item, fallbackItem);
       const proxy = proxiedImageUrl(src);
-      return `<img src="${esc(proxy)}" data-direct="${esc(proxy !== src ? src : "")}" alt="${esc(alt || currentAnime?.title || "EpisÃ³dio")}" loading="lazy" decoding="async" onload="imgReveal(this)" onerror="imageFail(this)"><span class="fallback-logo">Baltigo</span>`;
+      return `<img src="${esc(proxy)}" data-direct="${esc(proxy !== src ? src : "")}" alt="${esc(alt || currentAnime?.title || "Episódio")}" loading="lazy" decoding="async" onload="imgReveal(this)" onerror="imageFail(this)"><span class="fallback-logo">Baltigo</span>`;
     }
     function posterImage(item){
       const src = imgUrl(item);
@@ -478,11 +490,11 @@
     }
     function cardKey(e, fn){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fn(); } }
     function formatEp(item){ const s = +(item.season || epRef(item.episode).season || 1), n = +(item.episode_number || epRef(item.episode).episode || 1); return s > 1 ? `T${s}E${n}` : `EP ${n}`; }
-    function cardMeta(item,kind){ if(kind==="episode") return text(item.episode_title || item.description || "Novo episÃ³dio"); return text((item.genres||[]).slice(0,2).join(" Â· ") || item.year || "Anime"); }
+    function cardMeta(item,kind){ if(kind==="episode") return text(item.episode_title || item.description || "Novo episódio"); return text((item.genres||[]).slice(0,2).join(" · ") || item.year || "Anime"); }
     window.cardKey = cardKey;
 
     async function showHome(){
-      setActiveNav("home"); history.replaceState(null,"","#home"); loading("Carregando catÃ¡logo");
+      setActiveNav("home"); history.replaceState(null,"","#home"); loading("Carregando catálogo");
       try{
         homeData = homeData || await api("/api/catalog/home");
         const sections = sectionMap(homeData.sections || []);
@@ -493,7 +505,7 @@
         renderHero();
         renderContinue();
         renderHomeSections(sections, recent);
-      }catch(err){ console.error(err); mount(errorBox("CatÃ¡logo indisponÃ­vel","NÃ£o foi possÃ­vel carregar a home agora.",`<button class="btn primary" onclick="homeData=null;showHome()">Tentar novamente</button>`)); }
+      }catch(err){ console.error(err); mount(errorBox("Catálogo indisponível","Não foi possível carregar a home agora.",`<button class="btn primary" onclick="homeData=null;showHome()">Tentar novamente</button>`)); }
     }
     function chooseHero(featured,recent,sections){
       const pool = [...featured, ...(sections.top?.items||[]), ...(sections.em_lancamento?.items||[]), ...recent].filter(Boolean);
@@ -512,7 +524,7 @@
       heroIndex = Math.min(heroIndex, heroItems.length-1);
       const item = heroItems[heroIndex], title = text(item.title || "Animes Baltigo"), animeId = animeIdOf(item);
       const genres = (item.genres || []).map(text).filter(Boolean);
-      const src = imgUrl(item);
+      const src = heroImgUrl(item);
       const proxy = src.startsWith("http") ? `/api/image-proxy?url=${encodeURIComponent(src)}` : "";
       el.innerHTML = `<section class="hero" id="hero" onclick="openAnime('${esc(animeId)}')" aria-label="Destaque: ${esc(title)}">
         <div class="hero-media active" style="background-image:${cssImage(proxy || src)}"></div>
@@ -523,7 +535,7 @@
           <p class="hero-desc">${esc(item.description_short || item.description || cardMeta(item,"episode"))}</p>
           <div class="hero-meta">${isDub(item)?`<span class="pill brand">Dublado</span>`:""}${item.score?`<span class="pill">${esc(item.score)}</span>`:""}${item.episode?`<span class="pill">${esc(formatEp(item))}</span>`:""}</div>
         </div>
-        ${heroItems.length>1?`<div class="hero-controls"><button class="hero-arrow" aria-label="Anterior" onclick="event.stopPropagation();setHero(heroIndex-1)"><i class="fa-solid fa-angle-left"></i></button><button class="hero-arrow" aria-label="PrÃ³ximo" onclick="event.stopPropagation();setHero(heroIndex+1)"><i class="fa-solid fa-angle-right"></i></button></div><div class="hero-dots">${heroItems.map((_,i)=>`<button class="dot ${i===heroIndex?"active":""}" aria-label="Destaque ${i+1}" onclick="event.stopPropagation();setHero(${i})"></button>`).join("")}</div>`:""}
+        ${heroItems.length>1?`<div class="hero-controls"><button class="hero-arrow" aria-label="Anterior" onclick="event.stopPropagation();setHero(heroIndex-1)"><i class="fa-solid fa-angle-left"></i></button><button class="hero-arrow" aria-label="Próximo" onclick="event.stopPropagation();setHero(heroIndex+1)"><i class="fa-solid fa-angle-right"></i></button></div><div class="hero-dots">${heroItems.map((_,i)=>`<button class="dot ${i===heroIndex?"active":""}" aria-label="Destaque ${i+1}" onclick="event.stopPropagation();setHero(${i})"></button>`).join("")}</div>`:""}
       </section>`;
       const heroEl = document.getElementById("hero");
       if(heroEl){
@@ -544,12 +556,12 @@
     }
 
     function renderContinue(){
-      const list = getHistory().slice(0,10);
+      const list = latestHistoryByAnime().slice(0,10);
       const mountEl = document.getElementById("continueMount"); if(!mountEl) return;
-      mountEl.innerHTML = list.length ? `<section class="section"><div class="section-head"><h2 class="section-title">Continuar assistindo</h2><button class="section-action" onclick="showHistory()">Ver histÃ³rico</button></div><div class="rail-cards">${list.map(item=>historyCard(item)).join("")}</div></section>` : "";
+      mountEl.innerHTML = list.length ? `<section class="section"><div class="section-head"><h2 class="section-title">Continuar assistindo</h2><button class="section-action" onclick="showHistory()">Ver histórico</button></div><div class="rail-cards">${list.map(item=>historyCard(item)).join("")}</div></section>` : "";
     }
     function renderHomeSections(sections,recent){
-      const order = [["recentes","Ãšltimos episÃ³dios","episode"],["dublados","Dublados","anime"],["legendados","Legendados","anime"],["em_lancamento","Em lanÃ§amento","anime"],["top","Em alta","anime"],["acao","AÃ§Ã£o","anime"],["aventura","Aventura","anime"],["fantasia","Fantasia","anime"],["romance","Romance","anime"]];
+      const order = [["recentes","Últimos episódios","episode"],["dublados","Dublados","anime"],["legendados","Legendados","anime"],["em_lancamento","Em lançamento","anime"],["top","Em alta","anime"],["acao","Ação","anime"],["aventura","Aventura","anime"],["fantasia","Fantasia","anime"],["romance","Romance","anime"]];
       const fav = getFavorites();
       let html = order.map(([key,label,kind]) => {
         const items = key==="recentes" ? recent : (sections[key]?.items||[]);
@@ -557,7 +569,7 @@
         return sectionHtml(label, items.slice(0,12), kind, `openSection('${key}')`);
       }).join("");
       if(fav.length) html += sectionHtml("Favoritos", fav.slice(0,12), "anime", "showFavorites()");
-      document.getElementById("homeSections").innerHTML = html || emptyBox("CatÃ¡logo vazio","Nenhuma seÃ§Ã£o disponÃ­vel no momento.");
+      document.getElementById("homeSections").innerHTML = html || emptyBox("Catálogo vazio","Nenhuma seção disponível no momento.");
       window.animateCards?.();
     }
     function sectionHtml(title,items,kind,action){ return `<section class="section"><div class="section-head"><h2 class="section-title">${esc(title)}</h2><button class="section-action" onclick="${action}">Ver tudo</button></div><div class="grid ${kind==="episode"?"wide":""}">${items.map(i=>card(i,kind)).join("")}</div></section>`; }
@@ -565,7 +577,7 @@
     async function openSection(section, page=1, append=false){
       setActiveNav(section); history.replaceState(null,"",`#section/${section}/${page}`);
       const state = listState[section] || {items:[],page:0,done:false,title:section};
-      if(!append) { loading("Carregando seÃ§Ã£o"); state.items=[]; state.page=0; state.done=false; }
+      if(!append) { loading("Carregando seção"); state.items=[]; state.page=0; state.done=false; }
       try{
         const payload = await api(`/api/catalog/list?section=${encodeURIComponent(section)}&page=${page}`, {noCache:append});
         const items = payload.items || [];
@@ -573,9 +585,9 @@
         state.items = append ? state.items.concat(items.filter(i=>!ids.has(i.id||animeIdOf(i)))) : items;
         state.page = payload.page || page; state.title = payload.title || labelFor(section); state.done = payload.has_next === false || (payload.total_pages && state.page >= payload.total_pages) || items.length < 20;
         listState[section]=state; renderListPage("section",section,state,payload);
-      }catch(err){ console.error(err); mount(errorBox("SeÃ§Ã£o indisponÃ­vel","NÃ£o foi possÃ­vel carregar essa lista.",`<button class="btn primary" onclick="openSection('${esc(section)}',${page})">Tentar novamente</button>`)); }
+      }catch(err){ console.error(err); mount(errorBox("Seção indisponível","Não foi possível carregar essa lista.",`<button class="btn primary" onclick="openSection('${esc(section)}',${page})">Tentar novamente</button>`)); }
     }
-    function labelFor(key){ return ({dublados:"Dublados",legendados:"Legendados",top:"Em alta",em_lancamento:"Em lanÃ§amento",recentes:"Ãšltimos episÃ³dios"}[key] || key); }
+    function labelFor(key){ return ({dublados:"Dublados",legendados:"Legendados",top:"Em alta",em_lancamento:"Em lançamento",recentes:"Últimos episódios"}[key] || key); }
 
     async function runSearch(query, page=1, append=false){
       const q = text(query); if(!q) return showHome();
@@ -589,15 +601,15 @@
         state.items = append ? state.items.concat(items.filter(i=>!ids.has(i.id||animeIdOf(i)))) : items;
         state.page = payload.page || page; state.done = payload.has_next === false || (payload.total_pages && state.page >= payload.total_pages) || items.length < limit;
         listState[key]=state; renderListPage("search",q,state,payload);
-      }catch(err){ console.error(err); mount(errorBox("Busca indisponÃ­vel","NÃ£o foi possÃ­vel concluir a busca.",`<button class="btn primary" onclick="runSearch('${esc(q)}',${page})">Tentar novamente</button>`)); }
+      }catch(err){ console.error(err); mount(errorBox("Busca indisponível","Não foi possível concluir a busca.",`<button class="btn primary" onclick="runSearch('${esc(q)}',${page})">Tentar novamente</button>`)); }
     }
     function renderListPage(type,key,state,payload={}){
       const next = (state.page||1)+1, prev = Math.max(1,(state.page||1)-1);
       const loadMore = type==="search" ? `runSearch('${esc(key)}',${next},true)` : `openSection('${esc(key)}',${next},true)`;
       const goPrev = type==="search" ? `runSearch('${esc(key)}',${prev})` : `openSection('${esc(key)}',${prev})`;
       const goNext = type==="search" ? `runSearch('${esc(key)}',${next})` : `openSection('${esc(key)}',${next})`;
-      const content = state.items.length ? `<div class="grid">${state.items.map(i=>card(i)).join("")}</div><div class="pager">${state.page>1?`<button class="btn ghost small" onclick="${goPrev}">Anterior</button>`:""}<span class="page-indicator">PÃ¡gina ${state.page||1}${payload.total_pages?` de ${payload.total_pages}`:""}</span>${!state.done?`<button class="btn ghost small" onclick="${goNext}">PrÃ³xima</button><button class="btn primary small" onclick="${loadMore}">Carregar mais</button>`:""}</div>` : emptyBox(type==="search"?"Nenhum resultado":"Lista vazia", type==="search"?"Tente outro termo de busca.":"Essa seÃ§Ã£o nÃ£o retornou itens agora.");
-      mount(`<div class="list-page-head"><h1 class="section-title">${esc(state.title)}</h1><button class="btn ghost small" onclick="showHome()">InÃ­cio</button></div>${content}`);
+      const content = state.items.length ? `<div class="grid">${state.items.map(i=>card(i)).join("")}</div><div class="pager">${state.page>1?`<button class="btn ghost small" onclick="${goPrev}">Anterior</button>`:""}<span class="page-indicator">Página ${state.page||1}${payload.total_pages?` de ${payload.total_pages}`:""}</span>${!state.done?`<button class="btn ghost small" onclick="${goNext}">Próxima</button><button class="btn primary small" onclick="${loadMore}">Carregar mais</button>`:""}</div>` : emptyBox(type==="search"?"Nenhum resultado":"Lista vazia", type==="search"?"Tente outro termo de busca.":"Essa seção não retornou itens agora.");
+      mount(`<div class="list-page-head"><h1 class="section-title">${esc(state.title)}</h1><button class="btn ghost small" onclick="showHome()">Início</button></div>${content}`);
       window.animateCards?.();
     }
 
@@ -612,7 +624,7 @@
         currentSeason = (currentAnime.seasons?.[0] || seasonsFrom(currentEpisodes)[0] || 1);
         currentQuery = ""; currentFilter = "all";
         renderAnime();
-      }catch(err){ console.error(err); mount(errorBox("Anime nÃ£o encontrado","NÃ£o foi possÃ­vel carregar os detalhes desse anime.",`<button class="btn primary" onclick="showHome()">Voltar ao inÃ­cio</button>`)); }
+      }catch(err){ console.error(err); mount(errorBox("Anime não encontrado","Não foi possível carregar os detalhes desse anime.",`<button class="btn primary" onclick="showHome()">Voltar ao início</button>`)); }
     }
     function normalizeAnime(item){ const out={...item}; out.title=text(out.title); out.description=text(out.description); out.genres=(out.genres||[]).map(text); return out; }
     function normalizeEpisodes(items){ return items.map(ep=>({...ep,title:text(ep.title),season:seasonOf(ep),episode_number:epNo(ep)})).sort((a,b)=>(a.season-b.season)||(a.episode_number-b.episode_number)); }
@@ -626,37 +638,37 @@
       const status = useful(a.status);
       const age = useful(a.age_rating || a.rating || a.classification);
       const variants = (a.variants || []).filter(v=>animeIdOf(v) && animeIdOf(v)!==a.id);
-      const variantButtons = variants.map(v=>`<button class="btn ghost small" onclick="openAnime('${esc(animeIdOf(v))}')">${isDub(v)?"ðŸ‡§ðŸ‡· Dublado":"ðŸ‡¯ðŸ‡µ Legendado"}</button>`).join("");
+      const variantButtons = variants.map(v=>`<button class="btn ghost small" onclick="openAnime('${esc(animeIdOf(v))}')">${isDub(v)?"🇧🇷 Dublado":"🇯🇵 Legendado"}</button>`).join("");
       const stats = [
-        ["EpisÃƒÂ³dios", eps.length || a.episodes],
-        ["Score", a.score],
+        ["Episódios", eps.length || a.episodes],
+        ["Score", displayScore(a.score)],
         ["Ano", a.year || a.season_year],
         ["Status", status],
-        ["DuraÃƒÂ§ÃƒÂ£o", a.duration || (eps.length ? "24 min" : "")],
-        ["ÃƒÂudio", isDub(a) ? "Dublado" : ""],
+        ["Duração", a.duration || (eps.length ? "24 min" : "")],
+        ["Áudio", isDub(a) ? "Dublado" : ""],
         ["Temporada", useful(a.season)],
-        ["EstÃƒÂºdio", useful(a.studio)]
+        ["Estúdio", useful(a.studio)]
       ].filter(([,v]) => useful(v));
       mount(`<div class="detail-top">
-        <div class="crumbline"><button onclick="showHome()">InÃ­cio</button> &nbsp;-&nbsp; ${esc(a.title)}</div>
+        <div class="crumbline"><button onclick="showHome()">Início</button> &nbsp;-&nbsp; ${esc(a.title)}</div>
         <aside><div class="image-box poster-box">${posterImage(a)}</div>${status?`<div class="status"><i class="fa-solid fa-check"></i> ${esc(status)}</div>`:""}</aside>
         <section class="detail-info">
           <div class="tags">${age?`<span class="age">${esc(age.replace(/[^0-9+]/g,"") || age)}</span>`:""}${(a.genres||[]).filter(useful).slice(0,8).map(g=>`<span class="genre">${esc(g)}</span>`).join("")}</div>
           <h1 class="detail-title">${esc(a.title)}</h1>${(a.alt_titles||[])[0]?`<div class="alt-title">${esc(a.alt_titles[0])}</div>`:""}
           <div class="actions">${variantButtons}${trailer?`<button class="btn primary" onclick="openTrailer('${esc(trailer)}')"><i class="fa-solid fa-play"></i> Trailer</button>`:""}<button class="btn ${fav?"active":""}" id="favBtn" onclick="toggleFavoriteCurrent()"><i class="fa-solid fa-heart"></i> ${fav?"Favoritado":"Favoritar"}</button></div>
-          <div class="stats">${stat("EpisÃ³dios",eps.length||a.episodes||"-")}${stat("AniList",a.anilist_episodes||"-")}${stat("Score",a.score||"-")}${stat("Ano",a.year||"-")}${stat("Status",a.status||"-")}${stat("DuraÃ§Ã£o",a.duration||"24 min")}${stat("Ãudio",isDub(a)?"Dublado":"")}${stat("Temporada",a.season||"-")}${stat("EstÃºdio",a.studio||"-")}</div>
-          <div class="progress-box"><div class="progress-label"><span>${watched} de ${eps.length} episÃ³dios assistidos</span><span>${pct}%</span></div><div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div></div>
+          <div class="stats">${stat("Episódios",eps.length||a.episodes||"-")}${stat("AniList",a.anilist_episodes||"-")}${stat("Score",displayScore(a.score)||"-")}${stat("Ano",a.year||"-")}${stat("Status",a.status||"-")}${stat("Duração",a.duration||"24 min")}${stat("Áudio",isDub(a)?"Dublado":"")}${stat("Temporada",a.season||"-")}${stat("Estúdio",a.studio||"-")}</div>
+          <div class="progress-box"><div class="progress-label"><span>${watched} de ${eps.length} episódios assistidos</span><span>${pct}%</span></div><div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div></div>
           ${a.description?`<div class="syn-title">Sinopse</div><p class="syn ${canMore?"collapsed":""}" id="synopsis">${esc(a.description)}</p>${canMore?`<button class="btn ghost small" id="moreBtn" onclick="toggleSynopsis()">Mostrar mais</button>`:""}`:""}
         </section>
       </div>
       <section class="episode-panel"><div class="ep-toolbar">
-        <label class="ep-search"><i class="fa-solid fa-magnifying-glass"></i><input id="episodeSearch" placeholder="Buscar episÃ³dio ou tÃ­tulo..." value="${esc(currentQuery)}"></label>
+        <label class="ep-search"><i class="fa-solid fa-magnifying-glass"></i><input id="episodeSearch" placeholder="Buscar episódio ou título..." value="${esc(currentQuery)}"></label>
         <button class="icon-btn" id="sortBtn" title="Ordenar" aria-label="Ordenar"><i class="fa-solid fa-arrow-${currentSort==="asc"?"down-short-wide":"up-short-wide"}"></i></button>
         <button class="btn ghost small mark-btn" id="markSeason"><i class="fa-solid fa-check-double"></i> Marcar temporada</button>
         <button class="btn ghost small mark-btn" id="unmarkSeason"><i class="fa-solid fa-xmark"></i> Desmarcar</button>
-        <div class="seg" aria-label="Filtro de episÃ³dios"><button data-filter="all" class="${currentFilter==="all"?"active":""}">Todos</button><button data-filter="unwatched" class="${currentFilter==="unwatched"?"active":""}">NÃ£o assistidos</button><button data-filter="watched" class="${currentFilter==="watched"?"active":""}">Assistidos</button></div>
-        <div class="seg" aria-label="Modo de visualizaÃ§Ã£o"><button data-view="grid" class="${currentView==="grid"?"active":""}"><i class="fa-solid fa-table-cells"></i></button><button data-view="compact" class="${currentView==="compact"?"active":""}"><i class="fa-solid fa-list"></i></button><button data-view="list" class="${currentView==="list"?"active":""}"><i class="fa-solid fa-bars"></i></button></div>
-      </div><div class="ep-layout"><nav class="seasons">${seasons.map(s=>`<button class="season-btn ${+s===+currentSeason?"active":""}" data-season="${s}">${s}Âº Temporada</button>`).join("")}</nav><div id="episodesMount"></div></div></section>`);
+        <div class="seg" aria-label="Filtro de episódios"><button data-filter="all" class="${currentFilter==="all"?"active":""}">Todos</button><button data-filter="unwatched" class="${currentFilter==="unwatched"?"active":""}">Não assistidos</button><button data-filter="watched" class="${currentFilter==="watched"?"active":""}">Assistidos</button></div>
+        <div class="seg" aria-label="Modo de visualização"><button data-view="grid" class="${currentView==="grid"?"active":""}"><i class="fa-solid fa-table-cells"></i></button><button data-view="compact" class="${currentView==="compact"?"active":""}"><i class="fa-solid fa-list"></i></button><button data-view="list" class="${currentView==="list"?"active":""}"><i class="fa-solid fa-bars"></i></button></div>
+      </div><div class="ep-layout"><nav class="seasons">${seasons.map(s=>`<button class="season-btn ${+s===+currentSeason?"active":""}" data-season="${s}">${s}º Temporada</button>`).join("")}</nav><div id="episodesMount"></div></div></section>`);
       bindEpisodeControls(); renderEpisodes();
       window.animateCounters?.();
       window.BaltigoAnimations?.progress?.();
@@ -686,14 +698,14 @@
       if(currentFilter==="unwatched") items = items.filter(ep=>!isWatched(currentAnime.id,ep));
       if(currentSort==="desc") items=[...items].reverse();
       const cls = currentView==="grid" ? "episodes grid-mode" : currentView==="compact" ? "episodes compact-mode" : "episodes";
-      document.getElementById("episodesMount").innerHTML = items.length ? `<div class="${cls}">${items.map(ep=>episodeCard(ep)).join("")}</div>` : emptyBox("Nenhum episÃ³dio encontrado","Ajuste o filtro ou a busca.");
+      document.getElementById("episodesMount").innerHTML = items.length ? `<div class="${cls}">${items.map(ep=>episodeCard(ep)).join("")}</div>` : emptyBox("Nenhum episódio encontrado","Ajuste o filtro ou a busca.");
     }
     function episodeCard(ep){
       const watched = isWatched(currentAnime.id,ep), key=epKey(ep);
       return `<article class="ep-card ${watched?"watched":""}" onclick="openPlayer('${esc(currentAnime.id)}','${esc(key)}')">
         <div class="ep-thumb">${thumbImg(ep,currentAnime,ep.title || currentAnime.title)}</div>
-        <div class="ep-copy"><div class="ep-title">${esc(epLabel(ep))}</div><div class="ep-name">${esc(ep.title || "EpisÃ³dio sem tÃ­tulo")}</div><div class="ep-meta">${watched?"Assistido":"NÃ£o assistido"}</div></div>
-        <button class="switch" aria-label="Marcar episÃ³dio" onclick="event.stopPropagation();toggleEpisodeWatched('${esc(currentAnime.id)}','${esc(key)}')"></button>
+        <div class="ep-copy"><div class="ep-title">${esc(epLabel(ep))}</div><div class="ep-name">${esc(ep.title || "Episódio sem título")}</div><div class="ep-meta">${watched?"Assistido":"Não assistido"}</div></div>
+        <button class="switch" aria-label="Marcar episódio" onclick="event.stopPropagation();toggleEpisodeWatched('${esc(currentAnime.id)}','${esc(key)}')"></button>
       </article>`;
     }
 
@@ -706,7 +718,7 @@
         const payload = await api(`/api/anime/${encodeURIComponent(animeId)}/episode/${encodeURIComponent(episode)}?quality=HD${refresh?"&refresh=1":""}`, {noCache:true, timeout:45000});
         const item = payload.item || payload;
         setWatched(animeId,ep,true); saveHistory(currentAnime,ep,item); renderPlayer(item,ep);
-      }catch(err){ console.error(err); mount(errorBox("EpisÃ³dio indisponÃ­vel","NÃ£o foi possÃ­vel carregar o player agora.",`<button class="btn primary" onclick="openPlayer('${esc(animeId)}','${esc(episode)}',true)">Tentar novamente</button><button class="btn ghost" onclick="openAnime('${esc(animeId)}')">Voltar</button>`)); }
+      }catch(err){ console.error(err); mount(errorBox("Episódio indisponível","Não foi possível carregar o player agora.",`<button class="btn primary" onclick="openPlayer('${esc(animeId)}','${esc(episode)}',true)">Tentar novamente</button><button class="btn ghost" onclick="openAnime('${esc(animeId)}')">Voltar</button>`)); }
     }
     function renderPlayer(item,ep){
       const video = item.video || "";
@@ -718,9 +730,9 @@
       const src = isFile && (isTelegram || isApple) ? video : proxied;
       const fallbackSrc = src === video ? proxied : video;
       window._lastPlayer = {animeId:currentAnime.id, episode:epKey(ep), direct:video, proxied};
-      const player = !src ? playerError("Player indisponÃ­vel","Esse episÃ³dio nÃ£o retornou link de vÃ­deo.") : isFile ? `<video src="${esc(src)}" data-fallback-src="${esc(fallbackSrc || "")}" controls autoplay playsinline webkit-playsinline preload="metadata" onerror="playerFailed(this)"></video>` : `<iframe src="${esc(src)}" sandbox="allow-scripts allow-same-origin allow-presentation" allowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer" onerror="playerFailed(this)"></iframe>`;
+      const player = !src ? playerError("Player indisponível","Esse episódio não retornou link de vídeo.") : isFile ? `<video src="${esc(src)}" data-fallback-src="${esc(fallbackSrc || "")}" controls autoplay playsinline webkit-playsinline preload="metadata" onerror="playerFailed(this)"></video>` : `<iframe src="${esc(src)}" sandbox="allow-scripts allow-same-origin allow-presentation" allowfullscreen allow="autoplay; fullscreen; picture-in-picture" referrerpolicy="no-referrer" onerror="playerFailed(this)"></iframe>`;
       const idx = currentEpisodes.findIndex(e=>epKey(e)===epKey(ep)); const prev=currentEpisodes[idx-1], next=currentEpisodes[idx+1];
-      mount(`<div class="player-grid"><section><div class="watchbox"><div class="video-wrap" id="videoWrap">${player}</div></div><div class="player-info"><div class="actions"><button class="btn ghost small" onclick="openAnime('${esc(currentAnime.id)}')"><i class="fa-solid fa-angle-left"></i> Detalhes</button>${prev?`<button class="btn ghost small" onclick="openPlayer('${esc(currentAnime.id)}','${esc(epKey(prev))}')">Anterior</button>`:""}${next?`<button class="btn primary small" onclick="openPlayer('${esc(currentAnime.id)}','${esc(epKey(next))}')">PrÃ³ximo episÃ³dio</button>`:""}</div><h1 class="player-title">${esc(currentAnime.title)}</h1><div class="player-sub">${esc(epLabel(ep))}${ep.title?" Â· "+esc(ep.title):""}${isHls?" Â· HLS":""}</div></div></section><aside class="side-list"><div class="side-head">EpisÃ³dios</div>${currentEpisodes.map(e=>sideEpisode(e,ep)).join("")}</aside></div>`,"page player-page");
+      mount(`<div class="player-grid"><section><div class="watchbox"><div class="video-wrap" id="videoWrap">${player}</div></div><div class="player-info"><div class="actions"><button class="btn ghost small" onclick="openAnime('${esc(currentAnime.id)}')"><i class="fa-solid fa-angle-left"></i> Detalhes</button>${prev?`<button class="btn ghost small" onclick="openPlayer('${esc(currentAnime.id)}','${esc(epKey(prev))}')">Anterior</button>`:""}${next?`<button class="btn primary small" onclick="openPlayer('${esc(currentAnime.id)}','${esc(epKey(next))}')">Próximo episódio</button>`:""}</div><h1 class="player-title">${esc(currentAnime.title)}</h1><div class="player-sub">${esc(epLabel(ep))}${ep.title?" · "+esc(ep.title):""}${isHls?" · HLS":""}</div></div></section><aside class="side-list"><div class="side-head">Episódios</div>${currentEpisodes.map(e=>sideEpisode(e,ep)).join("")}</aside></div>`,"page player-page");
       document.getElementById("videoWrap")?.insertAdjacentHTML("beforeend", fullscreenOverlay(prev, next));
       bindFullscreenControls();
       document.querySelector(".player-info .actions")?.insertAdjacentHTML("afterbegin", `<button class="btn ghost small" onclick="enterFullscreen()"><i class="fa-solid fa-expand"></i> Tela cheia</button>`);
@@ -730,7 +742,7 @@
     }
     function playerError(t,m,actions=""){ return `<div class="empty" style="height:100%;display:grid;place-items:center"><div><h3>${esc(t)}</h3><p>${esc(m)}</p>${actions?`<div class="actions" style="justify-content:center">${actions}</div>`:""}</div></div>`; }
     function fullscreenOverlay(prev,next){
-      return `<button class="fs-touch-zone" aria-label="Mostrar controles" onclick="showFullscreenControls(true)"></button><div class="fs-overlay" id="fsOverlay" onclick="event.stopPropagation()"><div class="fs-top"><button class="fs-close" onclick="exitForcedFullscreen()"><i class="fa-solid fa-xmark"></i> Fechar</button></div><div class="fs-bottom"><button class="fs-action" ${prev?`onclick="openPlayer('${esc(currentAnime.id)}','${esc(epKey(prev))}')"`:"disabled"}><i class="fa-solid fa-circle-arrow-left"></i> Anterior</button><button class="fs-action" onclick="exitForcedFullscreen();openAnime('${esc(currentAnime.id)}')"><i class="fa-solid fa-bars"></i> Todos</button><button class="fs-action" ${next?`onclick="openPlayer('${esc(currentAnime.id)}','${esc(epKey(next))}')"`:"disabled"}>PrÃ³ximo <i class="fa-solid fa-circle-arrow-right"></i></button></div></div>`;
+      return `<button class="fs-touch-zone" aria-label="Mostrar controles" onclick="showFullscreenControls(true)"></button><div class="fs-overlay" id="fsOverlay" onclick="event.stopPropagation()"><div class="fs-top"><button class="fs-close" onclick="exitForcedFullscreen()"><i class="fa-solid fa-xmark"></i> Fechar</button></div><div class="fs-bottom"><button class="fs-action" ${prev?`onclick="openPlayer('${esc(currentAnime.id)}','${esc(epKey(prev))}')"`:"disabled"}><i class="fa-solid fa-circle-arrow-left"></i> Anterior</button><button class="fs-action" onclick="exitForcedFullscreen();openAnime('${esc(currentAnime.id)}')"><i class="fa-solid fa-bars"></i> Todos</button><button class="fs-action" ${next?`onclick="openPlayer('${esc(currentAnime.id)}','${esc(epKey(next))}')"`:"disabled"}>Próximo <i class="fa-solid fa-circle-arrow-right"></i></button></div></div>`;
     }
     let fsControlsTimer = null;
     function showFullscreenControls(force=true){
@@ -793,7 +805,7 @@
       }
       const last = window._lastPlayer || {};
       const actions = `<button class="btn primary small" onclick="openPlayer('${esc(last.animeId||currentAnime?.id||"")}','${esc(last.episode||"")}',true)">Tentar novamente</button>${last.direct?`<button class="btn ghost small" onclick="window.open('${esc(last.direct)}','_blank')">Abrir fonte</button>`:""}`;
-      document.getElementById("videoWrap").innerHTML = playerError("Falha ao carregar vÃ­deo","A fonte respondeu, mas o WebView nÃ£o conseguiu iniciar esse player.",actions);
+      document.getElementById("videoWrap").innerHTML = playerError("Falha ao carregar vídeo","A fonte respondeu, mas o WebView não conseguiu iniciar esse player.",actions);
     }
     function sideEpisode(e,active){ return `<button class="side-ep ${epKey(e)===epKey(active)?"active":""}" onclick="openPlayer('${esc(currentAnime.id)}','${esc(epKey(e))}')"><span class="side-thumb">${thumbImg(e,currentAnime,e.title || currentAnime.title)}</span><span class="side-copy"><span class="side-title">${esc(epLabel(e))}</span><span class="side-name">${esc(e.title||"")}</span></span></button>`; }
 
@@ -804,20 +816,29 @@
     function favStore(){ return JSON.parse(localStorage.getItem("baltigo:favorites")||"[]"); }
     function getFavorites(){ return favStore().sort((a,b)=>(b.saved_at||0)-(a.saved_at||0)); }
     function isFavorite(id){ return favStore().some(f=>f.id===id); }
-    function toggleFavoriteCurrent(){ if(!currentAnime)return; const list=favStore(); const idx=list.findIndex(f=>f.id===currentAnime.id); if(idx>=0) list.splice(idx,1); else list.unshift({id:currentAnime.id,title:currentAnime.title,cover_url:imgUrl(currentAnime),banner_url:imgUrl(currentAnime),is_dubbed:isDub(currentAnime),saved_at:Date.now()}); localStorage.setItem("baltigo:favorites",JSON.stringify(list.slice(0,200))); renderAnime(); }
-    function showFavorites(){ setActiveNav("favorites"); history.replaceState(null,"","#favorites"); const items=getFavorites(); mount(`<div class="list-page-head"><h1 class="section-title">Favoritos</h1><button class="btn ghost small" onclick="showHome()">InÃ­cio</button></div>${items.length?`<div class="grid">${items.map(i=>card(i)).join("")}</div>`:emptyBox("Nenhum favorito ainda","Use o botÃ£o Favoritar na pÃ¡gina do anime.")}`); window.animateCards?.(); }
+    function toggleFavoriteCurrent(){ if(!currentAnime)return; const list=favStore(); const idx=list.findIndex(f=>f.id===currentAnime.id); if(idx>=0) list.splice(idx,1); else list.unshift({id:currentAnime.id,title:currentAnime.title,cover_url:imgUrl(currentAnime),banner_url:heroImgUrl(currentAnime),is_dubbed:isDub(currentAnime),saved_at:Date.now()}); localStorage.setItem("baltigo:favorites",JSON.stringify(list.slice(0,200))); renderAnime(); }
+    function showFavorites(){ setActiveNav("favorites"); history.replaceState(null,"","#favorites"); const items=getFavorites(); mount(`<div class="list-page-head"><h1 class="section-title">Favoritos</h1><button class="btn ghost small" onclick="showHome()">Início</button></div>${items.length?`<div class="grid">${items.map(i=>card(i)).join("")}</div>`:emptyBox("Nenhum favorito ainda","Use o botão Favoritar na página do anime.")}`); window.animateCards?.(); }
     function getHistory(){ return JSON.parse(localStorage.getItem("baltigo:history")||"[]").sort((a,b)=>(b.last_at||0)-(a.last_at||0)); }
-    function saveHistory(anime,ep,item,progress=0,duration=0){ const list=getHistory().filter(h=>!(h.anime_id===anime.id && h.episode===epKey(ep))); list.unshift({anime_id:anime.id,title:anime.title,cover_url:imgUrl(anime),is_dubbed:isDub(anime),episode:epKey(ep),episode_number:epNo(ep),season:seasonOf(ep),episode_title:ep.title||item.title||"",progress,duration,last_at:Date.now()}); localStorage.setItem("baltigo:history",JSON.stringify(list.slice(0,80))); }
-    function historyCard(h){ return `<article class="card" onclick="openPlayer('${esc(h.anime_id)}','${esc(h.episode)}')">${imageTag(h,h.title,true)}${h.is_dubbed?`<span class="badge">DUB</span>`:""}<span class="ep-badge">${esc(formatEp(h))}</span><div class="card-body"><div class="card-title">${esc(h.title)}</div><div class="card-meta">${esc(h.episode_title || "Continuar episÃ³dio")}</div></div></article>`; }
-    function showHistory(){ setActiveNav("history"); history.replaceState(null,"","#history"); const items=getHistory(); mount(`<div class="list-page-head"><h1 class="section-title">HistÃ³rico</h1><div class="actions">${items.length?`<button class="btn danger small" onclick="clearHistory()">Limpar histÃ³rico</button>`:""}<button class="btn ghost small" onclick="showHome()">InÃ­cio</button></div></div>${items.length?`<div class="grid wide">${items.map(historyCard).join("")}</div>`:emptyBox("Sem histÃ³rico","Abra um episÃ³dio para continuar assistindo depois.")}`); window.animateCards?.(); }
-    function clearHistory(){ if(confirm("Limpar todo o histÃ³rico de episÃ³dios assistidos?")){ localStorage.removeItem("baltigo:history"); showHistory(); } }
+    function latestHistoryByAnime(){
+      const seen = new Set();
+      return getHistory().filter(item => {
+        const key = item.anime_id || item.title || "";
+        if(!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+    function saveHistory(anime,ep,item,progress=0,duration=0){ const list=getHistory().filter(h=>!(h.anime_id===anime.id && h.episode===epKey(ep))); list.unshift({anime_id:anime.id,title:anime.title,cover_url:imgUrl(anime),banner_url:heroImgUrl(anime),is_dubbed:isDub(anime),episode:epKey(ep),episode_number:epNo(ep),season:seasonOf(ep),episode_title:ep.title||item.title||"",progress,duration,last_at:Date.now()}); localStorage.setItem("baltigo:history",JSON.stringify(list.slice(0,80))); }
+    function historyCard(h){ return `<article class="card" onclick="openPlayer('${esc(h.anime_id)}','${esc(h.episode)}')">${imageTag(h,h.title,true)}${h.is_dubbed?`<span class="badge">DUB</span>`:""}<span class="ep-badge">${esc(formatEp(h))}</span><div class="card-body"><div class="card-title">${esc(h.title)}</div><div class="card-meta">${esc(formatEp(h))}</div></div></article>`; }
+    function showHistory(){ setActiveNav("history"); history.replaceState(null,"","#history"); const items=latestHistoryByAnime(); mount(`<div class="list-page-head"><h1 class="section-title">Histórico</h1><div class="actions">${getHistory().length?`<button class="btn danger small" onclick="clearHistory()">Limpar histórico</button>`:""}<button class="btn ghost small" onclick="showHome()">Início</button></div></div>${items.length?`<div class="grid wide">${items.map(historyCard).join("")}</div>`:emptyBox("Sem histórico","Abra um episódio para continuar assistindo depois.")}`); window.animateCards?.(); }
+    function clearHistory(){ if(confirm("Limpar todo o histórico de episódios assistidos?")){ localStorage.removeItem("baltigo:history"); showHistory(); } }
 
     document.addEventListener("fullscreenchange", () => {
       if(!document.fullscreenElement) exitForcedFullscreen();
     });
 
     document.getElementById("globalSearch").onsubmit=e=>{ e.preventDefault(); runSearch(searchInput.value); searchInput.blur(); };
-    searchInput.addEventListener("input",()=>{ clearTimeout(searchTimer); const q=searchInput.value; if(text(q).length>=3) searchTimer=setTimeout(()=>runSearch(q),650); });
+    searchInput.addEventListener("input",()=>{ clearTimeout(searchTimer); });
     function telegramStartParam(){
       const qs = new URLSearchParams(location.search || "");
       return text(tgApp?.initDataUnsafe?.start_param || qs.get("tgWebAppStartParam") || "");

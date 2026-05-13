@@ -2148,7 +2148,33 @@ async def get_episode_player(anime_id: str, episode: str, preferred_quality: str
     if source == "animeplay":
         from services import animeplay_client
 
-        return await animeplay_client.get_episode_player(anime_id, episode, preferred_quality)
+        try:
+            return await animeplay_client.get_episode_player(anime_id, episode, preferred_quality)
+        except Exception as animeplay_error:
+            from services import sushianimes_client
+
+            candidates = [anime_id]
+            try:
+                details = await animeplay_client.get_anime_details(anime_id)
+                title = str(details.get("title") or "").strip()
+                if title:
+                    results = await sushianimes_client.search_anime(title)
+                    candidates.extend(str(item.get("id") or "") for item in results[:3])
+            except Exception:
+                pass
+            seen: set[str] = set()
+            for candidate_id in candidates:
+                if not candidate_id or candidate_id in seen:
+                    continue
+                seen.add(candidate_id)
+                try:
+                    item = await sushianimes_client.get_episode_player(candidate_id, episode, preferred_quality)
+                    item["source"] = "sushi"
+                    item["base_slug"] = candidate_id
+                    return item
+                except Exception:
+                    continue
+            raise animeplay_error
     if source == "sushi":
         from services import sushianimes_client
 

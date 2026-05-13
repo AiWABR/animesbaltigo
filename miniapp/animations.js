@@ -75,6 +75,7 @@
   function animateCounters(){
     document.querySelectorAll(".stat-value").forEach(el => {
       const raw = el.textContent.trim();
+      if(!/^\d+$/.test(raw)) return;
       const num = parseInt(raw.replace(/\D/g,""), 10);
       if(!num || num < 2 || el.dataset.counted === "1") return;
       el.dataset.counted = "1";
