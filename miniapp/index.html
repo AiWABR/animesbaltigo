@@ -165,14 +165,14 @@
 <body>
   <div id="splashScreen" aria-hidden="true">
     <div class="splash-inner">
-      <div class="logo-crop splash-logo" role="img" aria-label="Animes Baltigo Streaming"><img src="/miniapp/assets/logo-header.png" alt=""></div>
+      <div class="logo-crop splash-logo" role="img" aria-label="Animes Baltigo Streaming"><img src="https://i.ibb.co/C3F0CLDR/IMG-0761.png" onerror="this.onerror=null;this.src='/miniapp/assets/logo-header.png'" alt=""></div>
       <div class="splash-bar"></div>
     </div>
   </div>
   <header class="app-header">
     <div class="shell nav">
       <a class="brand logo-brand" href="#home" aria-label="Animes Baltigo Streaming">
-        <span class="logo-crop brand-logo-img" aria-hidden="true"><img src="/miniapp/assets/logo-header.png" alt=""></span>
+        <span class="logo-crop brand-logo-img" aria-hidden="true"><img src="https://i.ibb.co/C3F0CLDR/IMG-0761.png" onerror="this.onerror=null;this.src='/miniapp/assets/logo-header.png'" alt=""></span>
         <span class="sr-only">Animes Baltigo Streaming</span>
       </a>
       <nav class="nav-icons" aria-label="Navegação principal">
@@ -414,7 +414,7 @@
     function loading(label="Carregando"){
       const isCatalog = /cat[aá]logo/i.test(label);
       if(isCatalog){
-        mount(`<div class="loading catalog-loading"><span class="logo-crop loading-logo" role="img" aria-label="Animes Baltigo Streaming"><img src="/miniapp/assets/logo-header.png" alt=""></span><span class="loading-line" aria-hidden="true"></span><div class="loading-label">${esc(label)}</div></div>`);
+        mount(`<div class="loading catalog-loading"><span class="logo-crop loading-logo" role="img" aria-label="Animes Baltigo Streaming"><img src="https://i.ibb.co/C3F0CLDR/IMG-0761.png" onerror="this.onerror=null;this.src='/miniapp/assets/logo-header.png'" alt=""></span><span class="loading-line" aria-hidden="true"></span><div class="loading-label">${esc(label)}</div></div>`);
         return;
       }
       mount(`<div class="loading"><span class="spinner"></span><div>${esc(label)}</div></div>`);
