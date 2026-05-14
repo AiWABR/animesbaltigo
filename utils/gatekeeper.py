@@ -59,10 +59,10 @@ def _channel_label(channel: str) -> str:
     return f"📢 {clean or 'Canal'}"
 
 
-def _channel_keyboard() -> InlineKeyboardMarkup:
+def _channel_keyboard(channels: list[str]) -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(_channel_label(channel), url=_channel_url(channel))
-        for channel in REQUIRED_CHANNELS
+        for channel in channels
     ]
     rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
     return InlineKeyboardMarkup(rows)
@@ -81,17 +81,17 @@ async def ensure_channel_membership(update, context: ContextTypes.DEFAULT_TYPE):
     if cached is True:
         return True
 
-    allowed = True
+    missing_channels: list[str] = []
     for channel in REQUIRED_CHANNELS:
         try:
             member = await context.bot.get_chat_member(channel, user_id)
         except Exception:
-            allowed = False
-            break
+            missing_channels.append(channel)
+            continue
         if not _is_member_allowed(member):
-            allowed = False
-            break
+            missing_channels.append(channel)
 
+    allowed = not missing_channels
     _cache_set(context, user_id, allowed)
     if allowed:
         return True
@@ -107,6 +107,6 @@ async def ensure_channel_membership(update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
         text,
         parse_mode="HTML",
-        reply_markup=_channel_keyboard(),
+        reply_markup=_channel_keyboard(missing_channels),
     )
     return False
