@@ -40,7 +40,7 @@ REQUIRED_CHANNELS = _env_str_list(
     "REQUIRED_CHANNELS",
     "@AtualizacoesOn,@Centraldeanimes_Baltigo,@QG_BALTIGO",
 )
-REQUIRED_CHANNEL_URL = os.getenv("REQUIRED_CHANNEL_FOLDER_URL", "https://t.me/addlist/baAMbPyrdQ1lZDIx").strip()
+REQUIRED_CHANNEL_URL = os.getenv("REQUIRED_CHANNEL_URL", "https://t.me/Centraldeanimes_Baltigo").strip()
 BOT_USERNAME = os.getenv("BOT_USERNAME", "AnimesBaltigo_Bot").strip()
 CANAL_POSTAGEM = os.getenv("CANAL_POSTAGEM", "@Centraldeanimes_Baltigo").strip()
 STICKER_DIVISOR = os.getenv(

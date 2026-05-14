@@ -1,14 +1,20 @@
 import html
+import re
 import time
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-from config import REQUIRED_CHANNELS, REQUIRED_CHANNEL_URL
+from config import REQUIRED_CHANNELS
 
 _MEMBERSHIP_CACHE_KEY = "membership_cache"
-_ACCESS_NOTICE_TTL = 120
 _MEMBERSHIP_CACHE_TTL = 300
+
+_CHANNEL_LABELS = {
+    "@AtualizacoesOn": "📢 Atualizações",
+    "@Centraldeanimes_Baltigo": "🍥 Anime Baltigo",
+    "@QG_BALTIGO": "🏠 QG Baltigo",
+}
 
 
 def _cache_get(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> bool | None:
@@ -24,8 +30,8 @@ def _cache_get(context: ContextTypes.DEFAULT_TYPE, user_id: int) -> bool | None:
 
 
 def _cache_set(context: ContextTypes.DEFAULT_TYPE, user_id: int, allowed: bool) -> None:
-    cache = context.application.bot_data.setdefault(_MEMBERSHIP_CACHE_KEY, {})
     ttl = _MEMBERSHIP_CACHE_TTL if allowed else 60
+    cache = context.application.bot_data.setdefault(_MEMBERSHIP_CACHE_KEY, {})
     cache[user_id] = (allowed, time.time() + ttl)
 
 
@@ -34,6 +40,32 @@ def _is_member_allowed(member) -> bool:
     if status in {"member", "administrator", "creator"}:
         return True
     return status == "restricted" and bool(getattr(member, "is_member", False))
+
+
+def _channel_url(channel: str) -> str:
+    channel = str(channel or "").strip()
+    if channel.startswith("@"):
+        return f"https://t.me/{channel[1:]}"
+    if channel.startswith("http://") or channel.startswith("https://"):
+        return channel
+    return f"https://t.me/{channel.lstrip('@')}"
+
+
+def _channel_label(channel: str) -> str:
+    channel = str(channel or "").strip()
+    if channel in _CHANNEL_LABELS:
+        return _CHANNEL_LABELS[channel]
+    clean = re.sub(r"[_-]+", " ", channel.lstrip("@")).strip().title()
+    return f"📢 {clean or 'Canal'}"
+
+
+def _channel_keyboard() -> InlineKeyboardMarkup:
+    buttons = [
+        InlineKeyboardButton(_channel_label(channel), url=_channel_url(channel))
+        for channel in REQUIRED_CHANNELS
+    ]
+    rows = [buttons[index : index + 2] for index in range(0, len(buttons), 2)]
+    return InlineKeyboardMarkup(rows)
 
 
 async def ensure_channel_membership(update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,29 +96,17 @@ async def ensure_channel_membership(update, context: ContextTypes.DEFAULT_TYPE):
     if allowed:
         return True
 
-    user_key = f"access_notice:{user_id}"
-    now = time.monotonic()
-    last_notice = context.user_data.get(user_key, 0.0)
-    if now - last_notice < _ACCESS_NOTICE_TTL:
-        return False
-    context.user_data[user_key] = now
-
     name = html.escape(user.first_name or "amigo")
     text = (
         f"🛑 <b>Calma aí, {name}</b>\n\n"
-        "Para usar este comando, você precisa entrar nos meus canais primeiro.\n\n"
-        "Assim você fica por dentro das novidades, avisos e atualizações.\n\n"
-        "Clique abaixo, entre nos canais da pasta e volte para tentar novamente."
+        "Para usar este comando, você precisa entrar nos canais oficiais primeiro.\n\n"
+        "É por lá que eu aviso novidades, lançamentos e atualizações importantes.\n\n"
+        "Entre nos canais abaixo e envie o comando novamente."
     )
-
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📢 Entrar nos canais", url=REQUIRED_CHANNEL_URL)]
-    ])
 
     await update.effective_message.reply_text(
         text,
         parse_mode="HTML",
-        reply_markup=keyboard,
+        reply_markup=_channel_keyboard(),
     )
-
     return False
