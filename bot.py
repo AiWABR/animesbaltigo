@@ -4,6 +4,7 @@ import traceback
 from telegram import Update
 from telegram.ext import (
     Application,
+    ApplicationHandlerStop,
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
@@ -50,6 +51,7 @@ from handlers.inline import inline_query
 from handlers.testminiapp import testminiapp
 from handlers.bots_showcase import bots_showcase
 from handlers.tracemoe import traceme, tracequota, trace_photo_handler
+from utils.gatekeeper import ensure_channel_membership
 
 
 from handlers.group_ai import group_ai_handler, esquecer_handler
@@ -100,6 +102,11 @@ async def affiliate_release_job(context: ContextTypes.DEFAULT_TYPE):
         print("ERRO AFFILIATE RELEASE:", repr(error))
 
 
+async def required_channel_guard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await ensure_channel_membership(update, context):
+        raise ApplicationHandlerStop
+
+
 def main():
     if not BOT_TOKEN:
         raise RuntimeError("Configure BOT_TOKEN nas variáveis de ambiente.")
@@ -117,6 +124,7 @@ def main():
     # Comandos principais
     app.add_handler(CallbackQueryHandler(control_block_callback_guard, pattern=r".*"), group=-100)
     app.add_handler(MessageHandler(filters.ALL, control_block_message_guard), group=-100)
+    app.add_handler(MessageHandler(filters.COMMAND, required_channel_guard), group=-90)
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("testminiapp", testminiapp))
