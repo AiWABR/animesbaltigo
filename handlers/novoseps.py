@@ -12,6 +12,7 @@ from telegram.ext import ContextTypes
 
 from config import ADMIN_IDS, BOT_USERNAME, DATA_DIR
 from services.animefire_client import get_anime_details
+from services.anime_update_mockup import render_anime_update_mockup
 from services.recent_episodes_client import get_recent_episodes
 
 
@@ -204,10 +205,12 @@ def _build_episode_caption(anime: dict, episode: str) -> str:
     episode_text = html.escape(str(episode))
 
     return (
-        f"🎬 <b>{full_title}</b>\n\n"
-        f"» <b>Temporada:</b> [ <i>{season_number}</i> ]\n"
-        f"» <b>Episódio:</b> [ <i>{episode_text}</i> ]\n"
-        f"» <b>Gênero(s):</b> <i>{genres_text}</i>\n\n"
+        f"🍥 <b>{full_title}</b>\n\n"
+        "<blockquote>"
+        f"<b>Temporada:</b> <i>{season_number}</i>\n"
+        f"<b>Episódio:</b> <i>{episode_text}</i>\n"
+        f"<b>Gênero(s):</b> <i>{genres_text}</i>"
+        "</blockquote>\n\n"
         f"» <b>@AtualizacoesOn</b>"
     )
 
@@ -223,7 +226,7 @@ def _build_episode_keyboard(anime_id: str, episode: str) -> InlineKeyboardMarkup
         [
             [
                 InlineKeyboardButton(
-                    "▶️ Ver episódio",
+                    "🍥 Ver anime",
                     url=_build_episode_deep_link(anime_id, episode),
                 )
             ]
@@ -235,6 +238,7 @@ async def _post_one_episode(
     context: ContextTypes.DEFAULT_TYPE,
     anime_id: str,
     episode: str,
+    title_hint: str = "",
 ) -> tuple[bool, str]:
     try:
         anime = await get_anime_details(anime_id)
@@ -245,6 +249,10 @@ async def _post_one_episode(
             or anime.get("banner_url")
             or None
         )
+        try:
+            photo = await render_anime_update_mockup(title_hint or _pick_main_title(anime))
+        except Exception as mockup_error:
+            logging.warning("Falha ao renderizar mockup AniList de %s: %r", anime_id, mockup_error)
 
         caption = _build_episode_caption(anime, episode)
         keyboard = _build_episode_keyboard(anime_id, episode)
@@ -297,6 +305,7 @@ async def _check_and_post_recent(
                 "key": key,
                 "anime_id": anime_id,
                 "episode": episode,
+                "title": str(item.get("title") or "").strip(),
             }
         )
 
@@ -308,6 +317,7 @@ async def _check_and_post_recent(
             context=context,
             anime_id=item["anime_id"],
             episode=item["episode"],
+            title_hint=item.get("title") or "",
         )
 
         if ok:

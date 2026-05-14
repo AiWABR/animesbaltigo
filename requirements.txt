@@ -8,3 +8,4 @@ lxml
 telethon
 python-dotenv
 aiohttp>=3.9,<4.0
+pillow==12.1.0
